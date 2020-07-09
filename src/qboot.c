@@ -14,7 +14,6 @@
 #include <qboot_gzip.h>
 #include <qboot_fastlz.h>
 #include <qboot_quicklz.h>
-#include <tiny_md5.h>
 
 //#define QBOOT_DEBUG
 #define DBG_TAG "Qboot"
@@ -417,6 +416,7 @@ static bool qbt_fw_release(const char *dst_part_name, const char *src_part_name,
 
 static bool qbt_dest_part_verify(const char *part_name, u32 dst_size, u32 hash_code)
 {
+#ifdef QBOOT_USING_HASH_VERIFY
     u32 pos = 0;
     u32 hash[4];
     u32 hash_val = 0;
@@ -454,6 +454,7 @@ static bool qbt_dest_part_verify(const char *part_name, u32 dst_size, u32 hash_c
         LOG_E("Qboot verify hash error, cal.hash: %08X != hash_code: %08X", hash_val, hash_code);
         return(false);
     }
+#endif
 
     return(true);
 }
@@ -499,13 +500,13 @@ static bool qbt_fw_update(const char *dst_part_name, const char *src_part_name, 
         return(false);
     }
 
-    #if (QBOOT_STATUS_LED_PIN >= 0)
+    #ifdef QBOOT_USING_STATUS_LED
     qled_set_blink(QBOOT_STATUS_LED_PIN, 50, 50);
     #endif
     
     rst = qbt_fw_release(dst_part_name, src_part_name, fw_info);
 
-    #if (QBOOT_STATUS_LED_PIN >= 0)
+    #ifdef QBOOT_USING_STATUS_LED
     qled_set_blink(QBOOT_STATUS_LED_PIN, 50, 450);
     #endif
 
@@ -515,11 +516,11 @@ static bool qbt_fw_update(const char *dst_part_name, const char *src_part_name, 
         return(false);
     }
 
-    /*if ( ! qbt_dest_part_verify(dst_part_name, fw_info->raw_size, fw_info->hash_code))
+    if ( ! qbt_dest_part_verify(dst_part_name, fw_info->raw_size, fw_info->hash_code))
     {
         LOG_E("Qboot firmware update fail. destination partition verify fail.");
         return(false);
-    }*/
+    }
 
     LOG_I("Qboot firmware update success.");
     return(true);    
@@ -558,7 +559,7 @@ static void qbt_jump_to_app(void)
     LOG_E("Qboot jump to application fail.");
 }
 
-#if (QBOOT_STATUS_LED_PIN >= 0)
+#ifdef QBOOT_USING_STATUS_LED
 static void qbt_status_led_init(void)
 {
     qled_add(QBOOT_STATUS_LED_PIN, QBOOT_STATUS_LED_LEVEL);
@@ -566,7 +567,7 @@ static void qbt_status_led_init(void)
 }
 #endif
 
-#if (QBOOT_FACTORY_KEY_PIN >= 0)
+#ifdef QBOOT_USING_FACTORY_KEY
 static bool qbt_factory_key_check(void)
 {
     bool rst = true;
@@ -579,7 +580,7 @@ static bool qbt_factory_key_check(void)
 
     rt_thread_mdelay(500);
 
-    #if (QBOOT_STATUS_LED_PIN >= 0)
+    #ifdef QBOOT_USING_STATUS_LED
     qled_set_blink(QBOOT_STATUS_LED_PIN, 50, 200);
     #endif
     
@@ -593,7 +594,7 @@ static bool qbt_factory_key_check(void)
         }
     }
 
-    #if (QBOOT_STATUS_LED_PIN >= 0)
+    #ifdef QBOOT_USING_STATUS_LED
     qled_set_blink(QBOOT_STATUS_LED_PIN, 50, 450);
     #endif
     
@@ -627,7 +628,7 @@ static void qbt_open_sys_shell(void)
     rt_thread_t thread = rt_thread_find(FINSH_THREAD_NAME);
     if (thread == NULL)
     {
-        #if (QBOOT_STATUS_LED_PIN >= 0)
+        #ifdef QBOOT_USING_STATUS_LED
         qled_set_blink(QBOOT_STATUS_LED_PIN, 50, 450);
         #endif
         finsh_set_prompt(QBOOT_SHELL_PROMPT);
@@ -807,7 +808,7 @@ static void qbt_thread_entry(void *params)
 	
     qbt_show_msg();
     
-    #if (QBOOT_STATUS_LED_PIN >= 0)
+    #ifdef QBOOT_USING_STATUS_LED
     qbt_status_led_init();
     #endif
     
@@ -827,7 +828,7 @@ static void qbt_thread_entry(void *params)
 		rt_hw_cpu_reset();
     }
 
-    #if (QBOOT_FACTORY_KEY_PIN >= 0)
+    #ifdef QBOOT_USING_FACTORY_KEY
     if (qbt_factory_key_check())
     {
         if (qbt_app_resume_from(QBOOT_FACTORY_PART_NAME))
