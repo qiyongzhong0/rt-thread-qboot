@@ -13,22 +13,27 @@
 #include <rtconfig.h>
 #include <fal_cfg.h>
 
-#define QBOOT_USING_AES
-#define QBOOT_USING_GZIP
-#define QBOOT_USING_QUICKLZ
-#define QBOOT_USING_FASTLZ
-#define QBOOT_USING_SHELL
-#define QBOOT_USING_SYSWATCH
-#define QBOOT_USING_OTA_DOWNLOAD
-#define QBOOT_USING_PRODUCT_INFO
+//#define QBOOT_USING_AES
+//#define QBOOT_USING_GZIP
+//#define QBOOT_USING_QUICKLZ
+//#define QBOOT_USING_FASTLZ
+//#define QBOOT_USING_SHELL
+//#define QBOOT_USING_SYSWATCH
+//#define QBOOT_USING_OTA_DOWNLOAD
+//#define QBOOT_USING_PRODUCT_INFO
+//#define QBOOT_USING_STATUS_LED
+//#define QBOOT_USING_FACTORY_KEY
 
+#ifdef QBOOT_USING_STATUS_LED
 #ifndef QBOOT_STATUS_LED_PIN
-#define QBOOT_STATUS_LED_PIN            -1
+#define QBOOT_STATUS_LED_PIN            0
 #endif
 #ifndef QBOOT_STATUS_LED_LEVEL
 #define QBOOT_STATUS_LED_LEVEL          1 //led on level, 0--low, 1--high
 #endif
+#endif
 
+#ifdef QBOOT_USING_FACTORY_KEY
 #ifndef QBOOT_FACTORY_KEY_PIN
 #define QBOOT_FACTORY_KEY_PIN           -1
 #endif
@@ -38,9 +43,12 @@
 #ifndef QBOOT_FACTORY_KEY_CHK_TMO
 #define QBOOT_FACTORY_KEY_CHK_TMO       10
 #endif
+#endif
 
+#ifdef QBOOT_USING_SHELL
 #ifndef QBOOT_SHELL_KEY_CHK_TMO
 #define QBOOT_SHELL_KEY_CHK_TMO         5
+#endif
 #endif
 
 #ifdef  RT_APP_PART_ADDR
