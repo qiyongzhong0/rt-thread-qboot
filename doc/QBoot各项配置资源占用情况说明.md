@@ -12,8 +12,9 @@
 |----|----|----|----|----|---|
 |Qboot|PKG_USING_QBOOT|4952|4196|组件核心功能模块|必备|
 |Syswatch|QBOOT_USING_SYSWATCH|2636|96|使用系统看守组件，以保障系统运行安全|安全第一，推荐使用|
-|Factory key|QBOOT_FACTORY_KEY_PIN|76|0|使用恢复出厂按键功能，引脚号小于0，表示不使用此功能|有按键时，推荐使用|
-|Status led|QBOOT_STATUS_LED_PIN|604+376|20|使用运行状态指示功能，引脚号小于0，不使用此功能|方便识别状态，推荐使用|
+|Factory key|QBOOT_USING_FACTORY_KEY|76|0|使用恢复出厂按键功能|有按键时，推荐使用|
+|Status led|QBOOT_USING_STATUS_LED|604+376|20|使用运行状态指示功能|方便识别状态，推荐使用|
+|verify|QBOOT_USING_VERIFY|11560|296|使用代码校验功能，校验升级代码正确性|资源占用略大，视需求使用|
 |AES|QBOOT_USING_AES|11560|296 (+4096)|使用AES解密功能|资源占用略大，视需求使用|
 |gzip|QBOOT_USING_GZIP|9856|8256 (+4096)|使用gzip解压缩功能|压缩率较好，资源占用大，产品资源丰富且固件尺寸较大时，推荐使用|
 |Quicklz|QBOOT_USING_QUICKLZ|768|4 (+1024) (+4096)|使用Quicklz解压缩功能|压缩率中，推荐使用|

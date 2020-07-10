@@ -13,6 +13,7 @@
 #include <rtconfig.h>
 #include <fal_cfg.h>
 
+//#define QBOOT_USING_VERIFY
 //#define QBOOT_USING_AES
 //#define QBOOT_USING_GZIP
 //#define QBOOT_USING_QUICKLZ
@@ -23,7 +24,6 @@
 //#define QBOOT_USING_PRODUCT_INFO
 //#define QBOOT_USING_STATUS_LED
 //#define QBOOT_USING_FACTORY_KEY
-//#define QBOOT_USING_HASH_VERIFY
 
 #ifdef QBOOT_USING_STATUS_LED
 #ifndef QBOOT_STATUS_LED_PIN
