@@ -12,22 +12,32 @@
 
 #include <tinycrypt.h>
 
-static u8 qbt_aes_iv[16];
-static tiny_aes_context qbt_aes_ctx;
+static tiny_md5_context ctx;
 
 void qbt_verify_init(void)
 {
-    
+    tiny_md5_starts(&ctx);
 }
 
 void qbt_verify_cal(const u8 *buf, u32 len)
 {
-
+    tiny_md5_update(&ctx, buf, len);
 }
 
-bool qbt_verify_rst(u8 *buf, u32 buf_size)
+u32 qbt_verify_rst(void)
 {
+    u32 hash[4];
+    u32 rst = 0;
+    
+    tiny_md5_finish(&ctx, (u8 *)hash);
 
+    for(int i=0; i<sizeof(hash)/sizeof(u32); i++)
+    {
+        rst ^= hash[i];
+    }
+
+    return(rst);
 }
+
 #endif
 

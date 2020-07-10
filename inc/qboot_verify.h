@@ -15,7 +15,7 @@
 
 void qbt_verify_init(void);
 void qbt_verify_cal(const u8 *buf, u32 len);
-bool qbt_verify_rst(u8 *buf, u32 buf_size);
+u32 qbt_verify_rst(void);
 
 #endif
 

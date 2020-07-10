@@ -14,6 +14,7 @@
 #include <qboot_gzip.h>
 #include <qboot_fastlz.h>
 #include <qboot_quicklz.h>
+#include <qboot_verify.h>
 
 //#define QBOOT_DEBUG
 #define DBG_TAG "Qboot"
@@ -416,14 +417,12 @@ static bool qbt_fw_release(const char *dst_part_name, const char *src_part_name,
 
 static bool qbt_dest_part_verify(const char *part_name, u32 dst_size, u32 hash_code)
 {
-#ifdef QBOOT_USING_HASH_VERIFY
+#ifdef QBOOT_USING_VERIFY
     u32 pos = 0;
-    u32 hash[4];
-    u32 hash_val = 0;
+    u32 hash_val;
     fal_partition_t part = fal_partition_find(part_name);
-    tiny_md5_context ctx;
-    
-    tiny_md5_starts(&ctx);
+
+    qbt_verify_init();
     
     while (pos < dst_size)
     {
@@ -438,20 +437,15 @@ static bool qbt_dest_part_verify(const char *part_name, u32 dst_size, u32 hash_c
             LOG_E("Qboot read firmware datas fail. part = %s, addr = %08X, length = %d", part_name, pos, read_len);
             return(false);
         }
-        tiny_md5_update(&ctx, cmprs_buf, read_len);
+        qbt_verify_cal(cmprs_buf, read_len);
         pos += read_len;
     }
-
-    tiny_md5_finish(&ctx, (u8*)hash);
-
-    for (int i=0; i<sizeof(hash)/sizeof(u32); i++)
-    {
-        hash_val ^= hash[i];
-    }
+    
+    hash_val = qbt_verify_rst();
 
     if (hash_val != hash_code)
     {
-        LOG_E("Qboot verify hash error, cal.hash: %08X != hash_code: %08X", hash_val, hash_code);
+        LOG_E("Qboot verify error, cal.hash: %08X != hash_code: %08X", hash_val, hash_code);
         return(false);
     }
 #endif
@@ -1062,11 +1056,11 @@ static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
         hash_code = strtol(argv[4], NULL, 16);
         if (qbt_dest_part_verify(part_name, size, hash_code))
         {
-            rt_kprintf("%s partition code verify ok.\n");
+            rt_kprintf("%s partition code verify ok.\n", part_name);
         }
         else
         {
-            rt_kprintf("%s partition code verify error.\n");
+            rt_kprintf("%s partition code verify error.\n", part_name);
         }
         return;
     }
