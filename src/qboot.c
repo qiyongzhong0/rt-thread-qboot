@@ -623,7 +623,7 @@ static void qbt_open_sys_shell(void)
     if (thread == NULL)
     {
         #ifdef QBOOT_USING_STATUS_LED
-        qled_set_blink(QBOOT_STATUS_LED_PIN, 50, 450);
+        qled_set_blink(QBOOT_STATUS_LED_PIN, 50, 950);
         #endif
         finsh_set_prompt(QBOOT_SHELL_PROMPT);
         extern int finsh_system_init(void);
@@ -855,7 +855,10 @@ static void qbt_thread_entry(void *params)
     }
 
     #ifdef QBOOT_USING_SHELL
-    qbt_startup_shell(false);
+    if (qbt_startup_shell(false))
+	{
+        return;
+	}
     #endif
     
 	LOG_I("Qboot will reboot after %d ms.", QBOOT_REBOOT_DELAY_MS);
@@ -1006,6 +1009,11 @@ static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
             return;
         }
         qbt_app_resume_from(argv[2]);
+            
+        #ifdef QBOOT_USING_STATUS_LED
+        qled_set_blink(QBOOT_STATUS_LED_PIN, 50, 950);
+        #endif
+        
         return;
     }
     
