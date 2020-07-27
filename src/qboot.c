@@ -25,7 +25,7 @@
 #endif
 #include <rtdbg.h>
 
-#define QBOOT_VER_MSG                   "V1.0.0 2020.07.08"
+#define QBOOT_VER_MSG                   "V1.0.0 2020.07.27"
 #define QBOOT_SHELL_PROMPT              "Qboot>"
 
 #define QBOOT_BUF_SIZE                  4096//must is 4096
@@ -49,16 +49,20 @@
 #define QBOOT_ALGO_CMPRS_FASTLZ         (3 << 8)
 #define QBOOT_ALGO_CMPRS_MASK           (0x0F << 8)
 
+#define QBOOT_ALGO2_VERIFY_NONE         0
+#define QBOOT_ALGO2_VERIFY_CRC          1
+#define QBOOT_ALGO2_VERIFY_MASK         0x0F
+
 typedef struct {
     u8  type[4];
     u16 algo;
-    u16 rev;
+    u16 algo2;
     u32 time_stamp;
     u8  part_name[16];
     u8  fw_ver[24];
-    u8  dst_ver[24];
-    u32 body_crc;
-    u32 hash_code;
+    u8  prod_code[24];
+    u32 pkg_crc;
+    u32 raw_crc;
     u32 raw_size;
     u32 pkg_size;
     u32 hdr_crc;
@@ -77,29 +81,22 @@ static bool qbt_part_is_exist(const char *part_name)
     return(fal_partition_find(part_name) != NULL);
 }
 
-static bool qbt_fw_info_read(const char *part_name, fw_info_t *fw_info)
+static bool qbt_fw_info_read(const char *part_name, fw_info_t *fw_info, bool from_tail)
 {
     fal_partition_t part = fal_partition_find(part_name);
-	if (fal_partition_read(part, 0, (u8 *)fw_info, sizeof(fw_info_t)) < 0)
+    u32 addr = from_tail ? (part->len - sizeof(fw_info_t)) : 0;
+	if (fal_partition_read(part, addr, (u8 *)fw_info, sizeof(fw_info_t)) < 0)
 	{
 		return(false);
 	}
 	return(true);
 }
 
-static bool qbt_fw_info_write(const char *part_name, fw_info_t *fw_info)
+static bool qbt_fw_info_write(const char *part_name, fw_info_t *fw_info, bool to_tail)
 {
     fal_partition_t part = fal_partition_find(part_name);
-    if (fal_partition_read(part, 0, cmprs_buf, QBOOT_BUF_SIZE) < 0)
-	{
-		return(false);
-	}
-	if (fal_partition_erase(part, 0, QBOOT_BUF_SIZE) < 0)
-	{
-        return(false);
-	}
-	memcpy(cmprs_buf, (u8 *)fw_info, sizeof(fw_info_t));
-	if (fal_partition_write(part, 0, cmprs_buf, QBOOT_BUF_SIZE) < 0)
+    u32 addr = to_tail ? (part->len - sizeof(fw_info_t)) : 0;
+	if (fal_partition_write(part, addr, (u8 *)fw_info, sizeof(fw_info_t)) < 0)
 	{
 		return(false);
 	}
@@ -116,29 +113,21 @@ static bool qbt_fw_info_check(fw_info_t *fw_info)
     return (crc32_cal((u8 *)fw_info, (sizeof(fw_info_t) - sizeof(u32))) == fw_info->hdr_crc);
 }
 
-static void qbt_fw_info_update(fw_info_t *fw_info)
+static bool qbt_fw_crc_check(const char *part_name, u32 addr, u32 size, u32 crc)
 {
-    u32 crc32;
-    strcpy(fw_info->dst_ver, fw_info->fw_ver);
-    crc32 = crc32_cal((u8 *)fw_info, sizeof(fw_info_t) - sizeof(u32));
-    fw_info->hdr_crc = crc32;
-}
-
-static bool qbt_fw_body_check(const char *part_name, u32 body_size, u32 body_crc)
-{
+    u32 pos = 0;
     u32 crc32 = 0xFFFFFFFF;
-    u32 pos = sizeof(fw_info_t);
     fal_partition_t part = fal_partition_find(part_name);
     
-    while (pos < body_size)
+    while (pos < size)
     {
         int read_len = QBOOT_BUF_SIZE;
-        int remain_len = body_size + sizeof(fw_info_t) - pos;
+        int remain_len = size - pos;
         if (read_len > remain_len)
         {
             read_len = remain_len;
         }
-        if (fal_partition_read(part, pos, cmprs_buf, read_len) < 0)
+        if (fal_partition_read(part, addr + pos, cmprs_buf, read_len) < 0)
         {
             LOG_E("Qboot read firmware datas fail. part = %s, addr = %08X, length = %d", part_name, pos, read_len);
             return(false);
@@ -148,9 +137,39 @@ static bool qbt_fw_body_check(const char *part_name, u32 body_size, u32 body_crc
     }
     crc32 ^= 0xFFFFFFFF;
 
-    if (crc32 != body_crc)
+    if (crc32 != crc)
     {
-        LOG_E("Qboot verify CRC32 error, cal.crc: %08X != body_crc: %08X", crc32, body_crc);
+        LOG_E("Qboot verify CRC32 error, cal.crc: %08X != body.crc: %08X", crc32, crc);
+        return(false);
+    }
+
+    return(true);
+}
+
+static bool qbt_release_sign_check(const char *part_name, fw_info_t *fw_info)
+{
+    u32 release_sign = 0;
+    fal_partition_t part = fal_partition_find(part_name);
+    u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x07) & ~0x07);
+
+    if (fal_partition_read(part, pos, (u8 *)&release_sign, sizeof(u32)) < 0)
+    {
+        LOG_E("Qboot read release sign fail from %s partition.", part_name);
+        return(false);
+    }
+
+    return(release_sign == 0);
+}
+
+static bool qbt_release_sign_write(const char *part_name, fw_info_t *fw_info)
+{
+    u32 release_sign = 0;
+    fal_partition_t part = fal_partition_find(part_name);
+    u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x07) & ~0x07);
+
+    if (fal_partition_write(part, pos, (u8 *)&release_sign, sizeof(u32)) < 0)
+    {
+        LOG_E("Qboot write release sign fail from %s partition.", part_name);
         return(false);
     }
 
@@ -262,13 +281,23 @@ static int qbt_dest_part_write(fal_partition_t part, u32 pos, u8 *decmprs_buf, u
         qbt_gzip_set_in(cmprs_buf, cmprs_len);
         while(1)
         {
-            decomp_len = qbt_gzip_decompress(decmprs_buf, QBOOT_BUF_SIZE);
+            #define REMAIN_BUF_SIZE 8
+            
+            static int remain_len = 0;
+            static u8 remain_buf[REMAIN_BUF_SIZE];
+
+            memcpy(decmprs_buf, remain_buf, remain_len);
+            decomp_len = qbt_gzip_decompress(decmprs_buf+remain_len, QBOOT_BUF_SIZE-remain_len);
             if (decomp_len < 0)
             {
                 write_len = -1;
                 cmprs_len = 0;
                 break;
             }
+            decomp_len += remain_len;
+            remain_len = (decomp_len & (REMAIN_BUF_SIZE-1));
+            decomp_len -= remain_len;
+            memcpy(remain_buf, decmprs_buf+decomp_len, remain_len);
             if (fal_partition_write(part, pos, decmprs_buf, decomp_len) < 0)
             {
                 write_len = -1;
@@ -277,6 +306,12 @@ static int qbt_dest_part_write(fal_partition_t part, u32 pos, u8 *decmprs_buf, u
             }
             pos += decomp_len;
             write_len += decomp_len;
+            if ((cmprs_len < QBOOT_CMPRS_READ_SIZE) && (remain_len > 0))//last package and remain > 0
+            {
+                memset(remain_buf+remain_len, 0xFF, REMAIN_BUF_SIZE-remain_len);
+                fal_partition_write(part, pos, remain_buf, REMAIN_BUF_SIZE);
+                write_len += REMAIN_BUF_SIZE;
+            }
             cmprs_len = 0;
             if (decomp_len < QBOOT_BUF_SIZE)
             {
@@ -376,7 +411,8 @@ static bool qbt_fw_release(const char *dst_part_name, const char *src_part_name,
     }
 
     rt_kprintf("Start erase partition %s ...\n", dst_part_name);
-    if (fal_partition_erase(dst_part, 0, fw_info->raw_size) < 0)
+    if ((fal_partition_erase(dst_part, 0, fw_info->raw_size) < 0) 
+        || (fal_partition_erase(dst_part, dst_part->len - sizeof(fw_info_t), sizeof(fw_info_t)) < 0))
     {
         LOG_E("Qboot release firmware fail. erase %s error.", dst_part_name);
         return(false);
@@ -411,75 +447,73 @@ static bool qbt_fw_release(const char *dst_part_name, const char *src_part_name,
         rt_kprintf("\b\b\b%02d%%", (dst_write_pos * 100 / fw_info->raw_size));
     }
     rt_kprintf("\n");
-    
-    return(true);
-}
 
-static bool qbt_dest_part_verify(const char *part_name, u32 dst_size, u32 hash_code)
-{
-#ifdef QBOOT_USING_VERIFY
-    u32 pos = 0;
-    u32 hash_val;
-    fal_partition_t part = fal_partition_find(part_name);
-
-    qbt_verify_init();
-    
-    while (pos < dst_size)
+    if ( ! qbt_fw_info_write(dst_part_name, fw_info, true))
     {
-        int read_len = QBOOT_BUF_SIZE;
-        int remain_len = dst_size - pos;
-        if (read_len > remain_len)
-        {
-            read_len = remain_len;
-        }
-        if (fal_partition_read(part, pos, cmprs_buf, read_len) < 0)
-        {
-            LOG_E("Qboot read firmware datas fail. part = %s, addr = %08X, length = %d", part_name, pos, read_len);
-            return(false);
-        }
-        qbt_verify_cal(cmprs_buf, read_len);
-        pos += read_len;
-    }
-    
-    hash_val = qbt_verify_rst();
-
-    if (hash_val != hash_code)
-    {
-        LOG_E("Qboot verify error, cal.hash: %08X != hash_code: %08X", hash_val, hash_code);
+        LOG_E("Qboot release firmware fail. write firmware to %s fail.", dst_part_name);
         return(false);
     }
-#endif
+    
+    return(true);
+}
+
+static bool qbt_dest_part_verify(const char *part_name)
+{
+    if ( ! qbt_fw_info_read(part_name, &fw_info, true))
+    {
+        LOG_E("Qboot verify fail, read firmware from %s partition", part_name);
+        return(false);
+    }
+    
+    if ( ! qbt_fw_info_check(&fw_info))
+    {
+        LOG_E("Qboot verify fail. firmware infomation check fail.");
+        return(false);
+    }
+
+    switch (fw_info.algo2 & QBOOT_ALGO2_VERIFY_MASK)
+    {
+    case QBOOT_ALGO2_VERIFY_CRC :
+        if ( ! qbt_fw_crc_check(part_name, 0, fw_info.raw_size, fw_info.raw_crc))
+        {
+            return(false);
+        }
+        break;
+        
+    default:
+        break;
+    }
 
     return(true);
 }
 
-static bool qbt_fw_check(const char *fw_part_name, fw_info_t *fw_info)
+static bool qbt_fw_check(const char *fw_part_name, fw_info_t *fw_info, bool output_log)
 {
     if ( ! qbt_part_is_exist(fw_part_name))
     {
-        LOG_E("Qboot firmware check fail. partition %d is not exist.", fw_part_name);
+        if (output_log) LOG_E("Qboot firmware check fail. partition %d is not exist.", fw_part_name);
         return(false);
     }
 
-    if ( ! qbt_fw_info_read(fw_part_name, fw_info))
+    if ( ! qbt_fw_info_read(fw_part_name, fw_info, false))
     {
-        LOG_E("Qboot firmware check fail. read firmware infomation fail.");
+        if (output_log) LOG_E("Qboot firmware check fail. read firmware infomation fail.");
         return(false);
     }
 
     if ( ! qbt_fw_info_check(fw_info))
     {
-        LOG_E("Qboot firmware check fail. firmware infomation check fail.");
+        if (output_log) LOG_E("Qboot firmware check fail. firmware infomation check fail.");
         return(false);
     }
 
-    if ( ! qbt_fw_body_check(fw_part_name, fw_info->pkg_size, fw_info->body_crc))
+    if ( ! qbt_fw_crc_check(fw_part_name, sizeof(fw_info_t), fw_info->pkg_size, fw_info->pkg_crc))
     {
-        LOG_E("Qboot firmware check fail. firmware body check fail.");
+        if (output_log) LOG_E("Qboot firmware check fail. firmware body check fail.");
         return(false);
     }
 
-    LOG_D("Qboot firmware check success.");
+    if (output_log) LOG_D("Qboot firmware check success.");
     
     return(true);
 }
@@ -510,7 +544,7 @@ static bool qbt_fw_update(const char *dst_part_name, const char *src_part_name, 
         return(false);
     }
 
-    if ( ! qbt_dest_part_verify(dst_part_name, fw_info->raw_size, fw_info->hash_code))
+    if ( ! qbt_dest_part_verify(dst_part_name))
     {
         LOG_E("Qboot firmware update fail. destination partition verify fail.");
         return(false);
@@ -706,8 +740,6 @@ static bool qbt_shell_key_check(void)
 
 static bool qbt_startup_shell(bool wait_press_key)
 {
-    qbt_close_sys_shell();
-    
     if ( ! qbt_shell_init(RT_CONSOLE_DEVICE_NAME))
     {
         LOG_E("Qboot initialize shell fail.");
@@ -748,10 +780,19 @@ static void qbt_show_msg(void)
 
 static bool qbt_app_resume_from(const char *src_part_name)
 {
-    if ( ! qbt_fw_check(src_part_name, &fw_info))
+    if ( ! qbt_fw_check(src_part_name, &fw_info, true))
     {
         return(false);
     }
+
+    #ifdef QBOOT_USING_PRODUCT_CODE
+    if ( strcmp(fw_info.prod_code, QBOOT_PRODUCT_CODE) != 0)
+    {
+        LOG_E("Qboot resume fail from %s.", src_part_name);
+        LOG_E("The product code error. ");
+        return(false);
+    }
+    #endif
     
     if (strcmp(fw_info.part_name, QBOOT_APP_PART_NAME) != 0)
     {
@@ -771,12 +812,20 @@ static bool qbt_app_resume_from(const char *src_part_name)
 
 static bool qbt_release_download(void)
 {
-    if ( ! qbt_fw_check(QBOOT_DOWNLOAD_PART_NAME, &fw_info))
+    if ( ! qbt_fw_check(QBOOT_DOWNLOAD_PART_NAME, &fw_info, true))
     {
         return(false);
     }
+
+    #ifdef QBOOT_USING_PRODUCT_CODE
+    if ( strcmp(fw_info.prod_code, QBOOT_PRODUCT_CODE) != 0)
+    {
+        LOG_E("The product code error.");
+        return(false);
+    }
+    #endif
     
-    if (strcmp(fw_info.dst_ver, fw_info.fw_ver) == 0)//same, not need release
+    if (qbt_release_sign_check(QBOOT_DOWNLOAD_PART_NAME, &fw_info))//not need release
     {
         return(true);
     }
@@ -786,11 +835,7 @@ static bool qbt_release_download(void)
         return(false);
     }
     
-    qbt_fw_info_update(&fw_info);
-    if ( ! qbt_fw_info_write(QBOOT_DOWNLOAD_PART_NAME, &fw_info))
-    {
-        LOG_E("Qboot write firmware infomation to %s partition fail.", QBOOT_DOWNLOAD_PART_NAME);
-    }
+    qbt_release_sign_write(QBOOT_DOWNLOAD_PART_NAME, &fw_info);
     
     LOG_I("Release firmware success from %s to %s.", QBOOT_DOWNLOAD_PART_NAME, fw_info.part_name);
     return(true);
@@ -800,6 +845,7 @@ static void qbt_thread_entry(void *params)
 {
 	#define QBOOT_REBOOT_DELAY_MS       5000
 	
+    qbt_close_sys_shell();
     qbt_show_msg();
     
     #ifdef QBOOT_USING_STATUS_LED
@@ -923,7 +969,7 @@ static void qbt_fw_info_show(const char *part_name)
 {
     char str[20];
     
-    if ( ! qbt_fw_check(part_name, &fw_info))
+    if ( ! qbt_fw_check(part_name, &fw_info, false))
     {
         return;
     }
@@ -932,56 +978,58 @@ static void qbt_fw_info_show(const char *part_name)
 	switch(fw_info.algo & QBOOT_ALGO_CRYPT_MASK)
 	{
     case QBOOT_ALGO_CRYPT_NONE:
-        strcpy(str, " NONE ");
+        strcpy(str, "NONE");
         break;
     case QBOOT_ALGO_CRYPT_XOR:
-		strcpy(str, "  XOR ");
+		strcpy(str, "XOR");
         break;
     case QBOOT_ALGO_CRYPT_AES:
-		strcpy(str, "  AES ");
+		strcpy(str, "AES");
         break;
     default:
-		strcpy(str, "UNKNOW ");
+		strcpy(str, "UNKNOW");
         break;
 	}
 	switch(fw_info.algo & QBOOT_ALGO_CMPRS_MASK)
 	{
     case QBOOT_ALGO_CMPRS_NONE:
-        strcpy(str + strlen(str), "&& NONE  ");
+        strcpy(str + strlen(str), " && NONE");
         break;
     case QBOOT_ALGO_CMPRS_GZIP:
-		strcpy(str + strlen(str), "&& GZIP  ");
+		strcpy(str + strlen(str), " && GZIP");
         break;
     case QBOOT_ALGO_CMPRS_QUICKLZ:
-		strcpy(str + strlen(str), "&& QUCKLZ");
+		strcpy(str + strlen(str), " && QUCKLZ");
         break;
     case QBOOT_ALGO_CMPRS_FASTLZ:
-		strcpy(str + strlen(str), "&& FASTLZ");
+		strcpy(str + strlen(str), " && FASTLZ");
         break;
     default:
-		strcpy(str + strlen(str), "&& UNKNOW");
+		strcpy(str + strlen(str), " && UNKNOW");
         break;
 	}
     rt_kprintf("==== Firmware infomation of %s partition ====\n", part_name);
-	rt_kprintf("| Destition partition name  | %*.s |\n", 16, fw_info.part_name);
-	rt_kprintf("| Algorithm mode            | %*.s |\n", 16, str);
-	rt_kprintf("| Firmware version          | %*.s |\n", 16, fw_info.fw_ver);
-    rt_kprintf("| Firmware body size        | %16d |\n", fw_info.pkg_size);
-	rt_kprintf("| Code raw size             | %16d |\n", fw_info.raw_size);
-    rt_kprintf("| Firmware body crc         |       0x%08X |\n", fw_info.body_crc);	
-	rt_kprintf("| Code hashcode             |       0x%08X |\n", fw_info.hash_code);
-	rt_kprintf("| Firmation header crc      |       0x%08X |\n", fw_info.hdr_crc);
-	rt_kprintf("| Build timestamp           | %16d |\n", fw_info.time_stamp);
+	rt_kprintf("| Product code          | %*.s |\n", 20, fw_info.prod_code);
+	rt_kprintf("| Algorithm mode        | %*.s |\n", 20, str);
+	rt_kprintf("| Destition partition   | %*.s |\n", 20, fw_info.part_name);
+	rt_kprintf("| Version               | %*.s |\n", 20, fw_info.fw_ver);
+    rt_kprintf("| Package size          | %20d |\n", fw_info.pkg_size);
+	rt_kprintf("| Raw code size         | %20d |\n", fw_info.raw_size);
+    rt_kprintf("| Package crc           | %20X |\n", fw_info.pkg_crc);	
+	rt_kprintf("| Raw code verify       | %20X |\n", fw_info.raw_crc);
+	rt_kprintf("| Header crc            | %20X |\n", fw_info.hdr_crc);
+	rt_kprintf("| Build timestamp       | %20d |\n", fw_info.time_stamp);
+	rt_kprintf("\n");
 }
 static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
 {
     const char *cmd_info[] = {
         "Usage:\n",
-        "qboot probe                        - probe firmware packages\n",
-        "qboot resume src_part              - resume application from src partiton\n",
-        "qboot clone src_part dst_part      - clone src partition to dst partiton\n",
-        "qboot verify part size hash_code   - verify released code of partition\n",
-        "qboot jump                         - jump to application\n",
+        "qboot probe                    - probe firmware packages\n",
+        "qboot resume src_part          - resume application from src partiton\n",
+        "qboot clone src_part dst_part  - clone src partition to dst partiton\n",
+        "qboot verify part              - verify released code of partition\n",
+        "qboot jump                     - jump to application\n",
         "\n"
         };
         
@@ -1032,7 +1080,7 @@ static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
             rt_kprintf("Desttition %s partition is not exist.\n", dst);
             return;
         }
-        if ( ! qbt_fw_check(src, &fw_info))
+        if ( ! qbt_fw_check(src, &fw_info, true))
         {
             rt_kprintf("Soure %s partition firmware error.\n", src);
             return;
@@ -1047,9 +1095,7 @@ static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
     if (strcmp(argv[1], "verify") == 0)
     {
         char *part_name;
-        u32 size;
-        u32 hash_code;
-        if (argc < 5)
+        if (argc < 3)
         {
             rt_kprintf(cmd_info[4]);
             return;
@@ -1060,9 +1106,7 @@ static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
             rt_kprintf("%s partition is not exist.\n", part_name);
             return;
         }
-        size = strtol(argv[3], NULL, 0);
-        hash_code = strtol(argv[4], NULL, 16);
-        if (qbt_dest_part_verify(part_name, size, hash_code))
+        if (qbt_dest_part_verify(part_name))
         {
             rt_kprintf("%s partition code verify ok.\n", part_name);
         }

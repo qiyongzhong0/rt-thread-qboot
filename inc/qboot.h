@@ -13,7 +13,7 @@
 #include <rtconfig.h>
 #include <fal_cfg.h>
 
-//#define QBOOT_USING_VERIFY
+//#define QBOOT_USING_PRODUCT_CODE
 //#define QBOOT_USING_AES
 //#define QBOOT_USING_GZIP
 //#define QBOOT_USING_QUICKLZ
@@ -58,6 +58,12 @@
 #define QBOOT_APP_ADDR                  0x08020000
 #endif
 
+#ifdef QBOOT_USING_PRODUCT_CODE
+#ifndef QBOOT_PRODUCT_CODE
+#define QBOOT_PRODUCT_CODE              "00010203040506070809"
+#endif
+#endif
+
 #ifndef QBOOT_APP_PART_NAME
 #define QBOOT_APP_PART_NAME             "app"
 #endif
@@ -84,10 +90,10 @@
 #define QBOOT_PRODUCT_NAME              "Qboot test device"
 #endif
 #ifndef QBOOT_PRODUCT_VER
-#define QBOOT_PRODUCT_VER               "v1.00 2020.07.08"
+#define QBOOT_PRODUCT_VER               "v1.00 2020.07.27"
 #endif
 #ifndef QBOOT_PRODUCT_MCU
-#define QBOOT_PRODUCT_MCU               "stm32f407"
+#define QBOOT_PRODUCT_MCU               "stm32l4r5zi"
 #endif
 #endif
 
