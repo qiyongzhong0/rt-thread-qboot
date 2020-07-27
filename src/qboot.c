@@ -14,7 +14,6 @@
 #include <qboot_gzip.h>
 #include <qboot_fastlz.h>
 #include <qboot_quicklz.h>
-#include <qboot_verify.h>
 
 //#define QBOOT_DEBUG
 #define DBG_TAG "Qboot"
@@ -845,7 +844,10 @@ static void qbt_thread_entry(void *params)
 {
 	#define QBOOT_REBOOT_DELAY_MS       5000
 	
+    #ifdef QBOOT_USING_SHELL
     qbt_close_sys_shell();
+    #endif
+    
     qbt_show_msg();
     
     #ifdef QBOOT_USING_STATUS_LED
