@@ -24,7 +24,7 @@
 #endif
 #include <rtdbg.h>
 
-#define QBOOT_VER_MSG                   "V1.0.0 2020.07.27"
+#define QBOOT_VER_MSG                   "V1.0.0 2020.07.28"
 #define QBOOT_SHELL_PROMPT              "Qboot>"
 
 #define QBOOT_BUF_SIZE                  4096//must is 4096
