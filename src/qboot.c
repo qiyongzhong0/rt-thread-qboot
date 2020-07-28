@@ -75,6 +75,12 @@ static u8 crypt_buf[QBOOT_BUF_SIZE];
 const u8 *crypt_buf = NULL;
 #endif
 
+#ifdef QBOOT_USING_GZIP
+#define GZIP_REMAIN_BUF_SIZE 8
+static int gzip_remain_len = 0;
+static u8 gzip_remain_buf[GZIP_REMAIN_BUF_SIZE];
+#endif
+
 static bool qbt_part_is_exist(const char *part_name)
 {
     return(fal_partition_find(part_name) != NULL);
@@ -121,10 +127,10 @@ static bool qbt_fw_crc_check(const char *part_name, u32 addr, u32 size, u32 crc)
     while (pos < size)
     {
         int read_len = QBOOT_BUF_SIZE;
-        int remain_len = size - pos;
-        if (read_len > remain_len)
+        int gzip_remain_len = size - pos;
+        if (read_len > gzip_remain_len)
         {
-            read_len = remain_len;
+            read_len = gzip_remain_len;
         }
         if (fal_partition_read(part, addr + pos, cmprs_buf, read_len) < 0)
         {
@@ -204,6 +210,7 @@ static bool qbt_fw_decompress_init(int cmprs_type)
         
     #ifdef QBOOT_USING_GZIP
     case QBOOT_ALGO_CMPRS_GZIP:
+        gzip_remain_len = 0;
         qbt_gzip_init();
         break;
     #endif
@@ -280,23 +287,21 @@ static int qbt_dest_part_write(fal_partition_t part, u32 pos, u8 *decmprs_buf, u
         qbt_gzip_set_in(cmprs_buf, cmprs_len);
         while(1)
         {
-            #define REMAIN_BUF_SIZE 8
-            
-            static int remain_len = 0;
-            static u8 remain_buf[REMAIN_BUF_SIZE];
+            bool is_end;
 
-            memcpy(decmprs_buf, remain_buf, remain_len);
-            decomp_len = qbt_gzip_decompress(decmprs_buf+remain_len, QBOOT_BUF_SIZE-remain_len);
+            memcpy(decmprs_buf, gzip_remain_buf, gzip_remain_len);
+            decomp_len = qbt_gzip_decompress(decmprs_buf + gzip_remain_len, QBOOT_BUF_SIZE - gzip_remain_len);
             if (decomp_len < 0)
             {
                 write_len = -1;
                 cmprs_len = 0;
                 break;
             }
-            decomp_len += remain_len;
-            remain_len = (decomp_len & (REMAIN_BUF_SIZE-1));
-            decomp_len -= remain_len;
-            memcpy(remain_buf, decmprs_buf+decomp_len, remain_len);
+            is_end = (decomp_len < (QBOOT_BUF_SIZE - gzip_remain_len));
+            decomp_len += gzip_remain_len;
+            gzip_remain_len = decomp_len % GZIP_REMAIN_BUF_SIZE;
+            decomp_len -= gzip_remain_len;
+            memcpy(gzip_remain_buf, decmprs_buf + decomp_len, gzip_remain_len);
             if (fal_partition_write(part, pos, decmprs_buf, decomp_len) < 0)
             {
                 write_len = -1;
@@ -305,15 +310,15 @@ static int qbt_dest_part_write(fal_partition_t part, u32 pos, u8 *decmprs_buf, u
             }
             pos += decomp_len;
             write_len += decomp_len;
-            if ((cmprs_len < QBOOT_CMPRS_READ_SIZE) && (remain_len > 0))//last package and remain > 0
+            if (is_end && (cmprs_len < QBOOT_CMPRS_READ_SIZE) && (gzip_remain_len > 0))//last package and remain > 0
             {
-                memset(remain_buf+remain_len, 0xFF, REMAIN_BUF_SIZE-remain_len);
-                fal_partition_write(part, pos, remain_buf, REMAIN_BUF_SIZE);
-                write_len += REMAIN_BUF_SIZE;
+                memset(gzip_remain_buf + gzip_remain_len, 0xFF, GZIP_REMAIN_BUF_SIZE - gzip_remain_len);
+                fal_partition_write(part, pos, gzip_remain_buf, GZIP_REMAIN_BUF_SIZE);
+                write_len += GZIP_REMAIN_BUF_SIZE;
             }
-            cmprs_len = 0;
-            if (decomp_len < QBOOT_BUF_SIZE)
+            if (is_end)
             {
+                cmprs_len = 0;
                 break;
             }
         }
@@ -809,9 +814,9 @@ static bool qbt_app_resume_from(const char *src_part_name)
     return(true);
 }
 
-static bool qbt_release_download(void)
+static bool qbt_release_from_part(const char *part_name, bool check_sign)
 {
-    if ( ! qbt_fw_check(QBOOT_DOWNLOAD_PART_NAME, &fw_info, true))
+    if ( ! qbt_fw_check(part_name, &fw_info, true))
     {
         return(false);
     }
@@ -824,19 +829,22 @@ static bool qbt_release_download(void)
     }
     #endif
     
-    if (qbt_release_sign_check(QBOOT_DOWNLOAD_PART_NAME, &fw_info))//not need release
+    if (check_sign)
     {
-        return(true);
+        if (qbt_release_sign_check(part_name, &fw_info))//not need release
+        {
+            return(true);
+        }
     }
     
-    if ( ! qbt_fw_update(fw_info.part_name, QBOOT_DOWNLOAD_PART_NAME, &fw_info))
+    if ( ! qbt_fw_update(fw_info.part_name, part_name, &fw_info))
     {
         return(false);
     }
     
-    qbt_release_sign_write(QBOOT_DOWNLOAD_PART_NAME, &fw_info);
+    qbt_release_sign_write(part_name, &fw_info);
     
-    LOG_I("Release firmware success from %s to %s.", QBOOT_DOWNLOAD_PART_NAME, fw_info.part_name);
+    LOG_I("Release firmware success from %s to %s.", part_name, fw_info.part_name);
     return(true);
 }
 
@@ -887,7 +895,7 @@ static void qbt_thread_entry(void *params)
     }
     #endif
 
-    qbt_release_download();
+    qbt_release_from_part(QBOOT_DOWNLOAD_PART_NAME, true);
     qbt_jump_to_app();
     
     LOG_I("Try resume application from %s", QBOOT_DOWNLOAD_PART_NAME);
@@ -1030,6 +1038,7 @@ static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
         "qboot probe                    - probe firmware packages\n",
         "qboot resume src_part          - resume application from src partiton\n",
         "qboot clone src_part dst_part  - clone src partition to dst partiton\n",
+        "qboot release part             - release firmware from partiton\n",
         "qboot verify part              - verify released code of partition\n",
         "qboot jump                     - jump to application\n",
         "\n"
@@ -1093,13 +1102,33 @@ static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
         }
         return;
     }
+
+    if (strcmp(argv[1], "release") == 0)
+    {
+        char *part_name;
+        if (argc < 3)
+        {
+            rt_kprintf(cmd_info[4]);
+            return;
+        }
+        part_name = argv[2];
+        if (qbt_release_from_part(part_name, false))
+        {
+            rt_kprintf("Release firmware success from %s partition.\n", part_name);
+        }
+        else
+        {
+            rt_kprintf("Release firmware fail from %s partition.\n", part_name);
+        }
+        return;
+    }
     
     if (strcmp(argv[1], "verify") == 0)
     {
         char *part_name;
         if (argc < 3)
         {
-            rt_kprintf(cmd_info[4]);
+            rt_kprintf(cmd_info[5]);
             return;
         }
         part_name = argv[2];
