@@ -2,7 +2,7 @@
 
 ## 1. QBoot组件简介
 
-#### QBoot组件全称是Quick bootloader，是用于快速制作bootloader程序的专用组件，组件说明详见[组件readme](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/readme.md)。本组件的设计初衷是帮助大家加速bootloader程序开发速度。组件基于RT-Thread 4.0设计，依赖Fal、crclib组件工作。目前版本V1.00，仅支持ARM系列芯片（作者也仅在STM32系统芯片上进行过测试），从下一版本V1.10将加入更多架构芯片的支持，希望大家提供帮助和支持。欢迎大家使用QBoot组件。
+#### QBoot组件全称是Quick bootloader，是用于快速制作bootloader程序的专用组件，组件说明详见[组件readme](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/readme.md)。本组件的设计初衷是帮助大家加速bootloader程序开发速度。组件基于RT-Thread 4.0设计，依赖Fal、crclib组件工作。目前版本V1.00，仅支持ARM系列芯片（作者也仅在STM32系列芯片上进行过测试），从下一版本V1.10将加入更多架构芯片的支持，希望大家提供帮助和支持。欢迎大家使用QBoot组件。
 
 ## 2. QBoot使用示例
 
@@ -53,7 +53,7 @@ int main(void)
 }
 ```
 
-#### 2.1.4使用CubeMX生成芯片低层初始化代码，并保存到新创建的工程的`driver`文件夹下
+#### 2.1.4使用CubeMX生成芯片低层初始化代码，并保存到工程的`driver`文件夹下
 ##### project配置如下：
 ![](figures/QBoot_sample_t02.jpg)
 ##### code generator配置如下：
@@ -136,15 +136,16 @@ INIT_COMPONENT_EXPORT(fal_init);
 
 ##### 编译工程，代码flash使用92.97k，ram使用14.72，满足设计需求
 ![](figures/QBoot_sample_t11.jpg)
+
 ##### 注：在使用gzip情况下，zlib组件的版本v1.0.0对flash使用较多ram较少，而版本laster则对flash使用较少，ram使用较多，请根据不同需要选择使用合适的版本。
 
 # >_< 恭喜！你的bootloader制作完成了！
 
 ## 3. 帮助连接：
 - 不同需求，须裁剪QBoot功能模块，请参考[qboot各项配置资源占用情况说明](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/doc/QBoot%E5%90%84%E9%A1%B9%E9%85%8D%E7%BD%AE%E8%B5%84%E6%BA%90%E5%8D%A0%E7%94%A8%E6%83%85%E5%86%B5%E8%AF%B4%E6%98%8E.md)
-- [运行指示灯状态说明](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/doc/QBoot%E7%8A%B6%E6%80%81%E6%8C%87%E7%A4%BA%E7%81%AF%E8%AF%B4%E6%98%8E.md)
+- 运行指示灯闪烁状态描述，详见[运行指示灯状态说明](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/doc/QBoot%E7%8A%B6%E6%80%81%E6%8C%87%E7%A4%BA%E7%81%AF%E8%AF%B4%E6%98%8E.md)
 - 升级包打包工具[下载地址](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/tools/QBootPackager_V1.00.zip)
-- [QBoot命令详述](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/doc/QBoot%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%BF%B0.md)
+- shell命令行QBoot的相关命令描述，详见[QBoot命令详述](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/doc/QBoot%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%BF%B0.md)
 
 ## 4. 联系方式
 
