@@ -26,6 +26,8 @@ qboot
 │   │   qboot_fastlz.c                // fastlz解压模块
 │   │   qboot_gzip.c                  // gzip解压模块
 │   └───qboot_quicklz                 // quicklz解压模块
+├───tools                             // 工具目录
+│   └───QBootPackager_V1.00.zip       // 升级包打包器
 │   license                           // 软件包许可证
 │   readme.md                         // 软件包使用说明
 └───SConscript                        // RT-Thread 默认的构建脚本
