@@ -1,10 +1,10 @@
 ﻿# Quick bootloader
 
-## 1.简介
+## 1. 简介
 
 **Quick bootloader** 是一个用于快速制作bootloader的组件。
 
-### 1.1目录结构
+### 1.1 目录结构
 
 `Quick bootloader` 软件包目录结构如下所示：
 
@@ -33,24 +33,24 @@ qboot
 └───SConscript                        // RT-Thread 默认的构建脚本
 ```
 
-### 1.2许可证
+### 1.2 许可证
 
 Quick bootloader 遵循 LGPLv2.1 许可，详见 `LICENSE` 文件。
 
-### 1.3依赖
+### 1.3 依赖
 
 - RT_Thread 4.0
 - fal
 - crclib
 
-## 2.使用
+## 2. 使用
 
-### 2.1获取组件
+### 2.1 获取组件
 
 - **方式1：**
 通过 *Env配置工具* 或 *RT-Thread studio* 开启软件包，根据需要配置各项参数；配置路径为 *RT-Thread online packages -> system -> qboot* 
 
-### 2.2功能选项宏定义说明
+### 2.2 功能选项宏定义说明
 
 | 选项宏 | 说明 |
 | ---- | ---- |
@@ -81,10 +81,13 @@ Quick bootloader 遵循 LGPLv2.1 许可，详见 `LICENSE` 文件。
 | QBOOT_FACTORY_KEY_LEVEL 	| 按键按下后的引脚电平
 | QBOOT_FACTORY_KEY_CHK_TMO | 检测按键持续按下的超时时间
 
-### 2.3各功能模块资源使用情况详见 ：[qboot各项配置资源占用情况说明](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/doc/QBoot%E5%90%84%E9%A1%B9%E9%85%8D%E7%BD%AE%E8%B5%84%E6%BA%90%E5%8D%A0%E7%94%A8%E6%83%85%E5%86%B5%E8%AF%B4%E6%98%8E.md)
+### 2.3 各功能模块资源使用情况，详见 ：[qboot各项配置资源占用情况说明](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/doc/QBoot%E5%90%84%E9%A1%B9%E9%85%8D%E7%BD%AE%E8%B5%84%E6%BA%90%E5%8D%A0%E7%94%A8%E6%83%85%E5%86%B5%E8%AF%B4%E6%98%8E.md)
+
+### 2.4 如何使用QBoot组件快速制作bootloader，详见：[QBoot使用指导](https://gitee.com/qiyongzhong0/rt-thread-qboot/blob/master/doc/QBoot%E4%BD%BF%E7%94%A8%E6%8C%87%E5%AF%BC.md)
 
 ## 3. 联系方式
 
 * 维护：qiyongzhong
 * 主页：https://gitee.com/qiyongzhong0/rt-thread-qboot
+* 邮箱：917768104@qq.com
 
