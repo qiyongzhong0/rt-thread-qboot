@@ -302,11 +302,14 @@ static int qbt_dest_part_write(fal_partition_t part, u32 pos, u8 *decmprs_buf, u
             gzip_remain_len = decomp_len % GZIP_REMAIN_BUF_SIZE;
             decomp_len -= gzip_remain_len;
             memcpy(gzip_remain_buf, decmprs_buf + decomp_len, gzip_remain_len);
-            if (fal_partition_write(part, pos, decmprs_buf, decomp_len) < 0)
+            if (decomp_len > 0)
             {
-                write_len = -1;
-                cmprs_len = 0;
-                break;
+                if (fal_partition_write(part, pos, decmprs_buf, decomp_len) < 0)
+                {
+                    write_len = -1;
+                    cmprs_len = 0;
+                    break;
+                }
             }
             pos += decomp_len;
             write_len += decomp_len;
@@ -339,6 +342,12 @@ static int qbt_dest_part_write(fal_partition_t part, u32 pos, u8 *decmprs_buf, u
                 break;
             }
             decomp_len = qbt_quicklz_decompress(decmprs_buf, cmprs_buf + QBOOT_QUICKLZ_BLOCK_HDR_SIZE);
+            if (decomp_len < 0)
+            {
+                write_len = -1;
+                cmprs_len = 0;
+                break;
+            }
             if (fal_partition_write(part, pos, decmprs_buf, decomp_len) < 0)
             {
                 write_len = -1;
@@ -367,6 +376,12 @@ static int qbt_dest_part_write(fal_partition_t part, u32 pos, u8 *decmprs_buf, u
                 break;
             }
             decomp_len = qbt_fastlz_decompress(decmprs_buf, QBOOT_BUF_SIZE, cmprs_buf + QBOOT_FASTLZ_BLOCK_HDR_SIZE, block_size);
+            if (decomp_len < 0)
+            {
+                write_len = -1;
+                cmprs_len = 0;
+                break;
+            }
             if (fal_partition_write(part, pos, decmprs_buf, decomp_len) < 0)
             {
                 write_len = -1;
