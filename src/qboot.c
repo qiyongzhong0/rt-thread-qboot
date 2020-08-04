@@ -598,6 +598,12 @@ static void qbt_jump_to_app(void)
         HAL_NVIC_ClearPendingIRQ(i);
     }
     
+    SysTick->CTRL = 0;
+    SysTick->LOAD = 0;
+    SysTick->VAL = 0;
+    
+    HAL_RCC_DeInit();
+    
     __set_CONTROL(0);
 	__set_MSP(stk_addr);
 	
