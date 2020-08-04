@@ -13,6 +13,9 @@ qboot
 ├───doc                                // 说明文档目录
 │   │   qboot各项配置资源占用情况说明.md  // 资源占用说明
 │   │   qboot工作流程说明.md            // 工作流程说明
+│   │   qboot命令详述.md            	  // shell命令说明
+│   │   qboot使用指导.md               // 使用示例详解
+│   │   极简版Bootloader制作.md        // 极简bootloader制作示例
 │   └───qboot状态指示灯说明.md          // 状态指示灯说明
 ├───inc                               // 头文件目录
 │   │   qboot.h                       // 主模块头文件
