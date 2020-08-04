@@ -337,6 +337,10 @@ static int qbt_dest_part_write(fal_partition_t part, u32 pos, u8 *decmprs_buf, u
                 break;
             }
             block_size = qbt_quicklz_get_block_size(cmprs_buf);
+            if (block_size <= 0)
+            {
+                break;
+            }
             if (cmprs_len < block_size + QBOOT_QUICKLZ_BLOCK_HDR_SIZE)
             {
                 break;
@@ -371,6 +375,10 @@ static int qbt_dest_part_write(fal_partition_t part, u32 pos, u8 *decmprs_buf, u
                 break;
             }
             block_size = qbt_fastlz_get_block_size(cmprs_buf);
+            if (block_size <= 0)
+            {
+                break;
+            }
             if (cmprs_len < block_size + QBOOT_FASTLZ_BLOCK_HDR_SIZE)
             {
                 break;
