@@ -16,15 +16,27 @@
 #include <qboot_quicklz.h>
 
 //#define QBOOT_DEBUG
+#define QBOOT_USING_LOG
 #define DBG_TAG "Qboot"
+
 #ifdef QBOOT_DEBUG
 #define DBG_LVL DBG_LOG
 #else
 #define DBG_LVL DBG_INFO
 #endif
+
+#ifdef QBOOT_USING_LOG
+#ifndef DBG_ENABLE
+#define DBG_ENABLE
+#endif
+#ifndef DBG_COLOR
+#define DBG_COLOR
+#endif
+#endif
+
 #include <rtdbg.h>
 
-#define QBOOT_VER_MSG                   "V1.0.0 2020.07.28"
+#define QBOOT_VER_MSG                   "V1.0.1 2020.08.05"
 #define QBOOT_SHELL_PROMPT              "Qboot>"
 
 #define QBOOT_BUF_SIZE                  4096//must is 4096
