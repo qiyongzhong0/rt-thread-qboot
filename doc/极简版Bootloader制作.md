@@ -188,6 +188,6 @@ int main(void)
 ![](figures/QBoot_mini_tu19.jpg)
 
 #### 通过ymodem下载固件包到download，bootloader可正常释放固件到app
-![](figures/QBoot_mini_tu19.jpg)
+![](figures/QBoot_mini_tu20.jpg)
 
 ## 6. 总结：通过极简版bootloader的制作可见，基于RT-Thread V4.0通过裁剪也可以制作出尺寸较小的bootloader，最小尺寸不足20k，如果加入log输出和syswatch，尺寸不足32k，能够满足大多数小资源MCU的使用；而且通过RT-Thread V4.0制作bootloader比较简单和容易。
