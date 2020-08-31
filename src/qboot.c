@@ -593,7 +593,7 @@ static bool qbt_fw_update(const char *dst_part_name, const char *src_part_name, 
     return(true);    
 }
 
-static void qbt_jump_to_app(void)
+RT_WEAK void qbt_jump_to_app(void)
 {
     typedef void (*app_func_t)(void);
 	u32 app_addr = QBOOT_APP_ADDR;
