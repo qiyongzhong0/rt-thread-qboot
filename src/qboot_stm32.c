@@ -14,6 +14,7 @@
 #include <rtdevice.h>
 #include <qboot.h>
 
+//#define QBOOT_APP_RUN_IN_QSPI_FLASH
 //#define QBOOT_DEBUG
 #define QBOOT_USING_LOG
 #define DBG_TAG "Qboot"
@@ -35,9 +36,16 @@
 
 #include <rtdbg.h>
 
-#ifdef CHIP_SERIES_STM32H7
+#ifdef QBOOT_APP_RUN_IN_QSPI_FLASH
+static void qbt_qspi_flash_init(void)
+{
+    //waiting realize
+}
+
 void qbt_jump_to_app(void)
 {
+    qbt_qspi_flash_init();
+    
     //waiting realize
 }
 #else
