@@ -12,7 +12,7 @@
 
 #include <rtthread.h>
 #include <rtdevice.h>
-#include <fal.h>
+#include <qboot.h>
 
 //#define QBOOT_DEBUG
 #define QBOOT_USING_LOG
