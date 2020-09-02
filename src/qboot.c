@@ -4,6 +4,8 @@
  * Change Logs:
  * Date           Author            Notes
  * 2020-07-06     qiyongzhong       first version
+ * 2020-08-31     qiyongzhong       fix qbt_jump_to_app type from static to weak
+ * 2020-09-01     qiyongzhong       add app verify when checking firmware
  */
 
 #include <rtthread.h>
@@ -14,6 +16,10 @@
 #include <qboot_gzip.h>
 #include <qboot_fastlz.h>
 #include <qboot_quicklz.h>
+
+#ifdef QBOOT_USING_STATUS_LED
+#include <qled.h>
+#endif
 
 //#define QBOOT_DEBUG
 #define QBOOT_USING_LOG
@@ -427,6 +433,219 @@ static int qbt_dest_part_write(fal_partition_t part, u32 pos, u8 *decmprs_buf, u
     return(write_len);
 }
 
+#ifdef QBOOT_USING_APP_CHECK
+static int qbt_app_crc_cal(u32 *p_crc32, u32 max_cal_len, u8 *decmprs_buf, u8 *cmprs_buf, u32 *p_cmprs_len, int cmprs_type)
+{
+    int write_len = 0;
+    int cmprs_len = 0;
+    int decomp_len = 0;
+    int block_size = 0;
+    
+    cmprs_len = *p_cmprs_len;
+    
+    switch(cmprs_type)
+    {
+    case QBOOT_ALGO_CMPRS_NONE:
+        if (cmprs_len > max_cal_len)
+        {
+            cmprs_len = max_cal_len;
+        }
+        *p_crc32 = crc32_cyc_cal(*p_crc32, cmprs_buf, cmprs_len);
+        write_len = cmprs_len;
+        cmprs_len = 0;
+        break;
+        
+    #ifdef QBOOT_USING_GZIP
+    case QBOOT_ALGO_CMPRS_GZIP:
+        qbt_gzip_set_in(cmprs_buf, cmprs_len);
+        while(1)
+        {
+            bool is_end;
+
+            memcpy(decmprs_buf, gzip_remain_buf, gzip_remain_len);
+            decomp_len = qbt_gzip_decompress(decmprs_buf + gzip_remain_len, QBOOT_BUF_SIZE - gzip_remain_len);
+            if (decomp_len < 0)
+            {
+                write_len = -1;
+                cmprs_len = 0;
+                break;
+            }
+            is_end = (decomp_len < (QBOOT_BUF_SIZE - gzip_remain_len));
+            decomp_len += gzip_remain_len;
+            gzip_remain_len = decomp_len % GZIP_REMAIN_BUF_SIZE;
+            decomp_len -= gzip_remain_len;
+            memcpy(gzip_remain_buf, decmprs_buf + decomp_len, gzip_remain_len);
+            if (decomp_len > 0)
+            {
+                if (decomp_len > max_cal_len)
+                {
+                    decomp_len = max_cal_len;
+                }
+                *p_crc32 = crc32_cyc_cal(*p_crc32, decmprs_buf, decomp_len);
+            }
+            write_len += decomp_len;
+            if (is_end && (cmprs_len < QBOOT_CMPRS_READ_SIZE) && (gzip_remain_len > 0))//last package and remain > 0
+            {
+                if (gzip_remain_len > max_cal_len)
+                {
+                    gzip_remain_len = max_cal_len;
+                }
+                *p_crc32 = crc32_cyc_cal(*p_crc32, gzip_remain_buf, gzip_remain_len);
+                write_len += gzip_remain_len;
+            }
+            if (is_end)
+            {
+                cmprs_len = 0;
+                break;
+            }
+        }
+        break;
+    #endif
+    
+    #ifdef QBOOT_USING_QUICKLZ    
+    case QBOOT_ALGO_CMPRS_QUICKLZ:
+        while(1)
+        {
+            if (cmprs_len < QBOOT_QUICKLZ_BLOCK_HDR_SIZE)
+            {
+                break;
+            }
+            block_size = qbt_quicklz_get_block_size(cmprs_buf);
+            if (block_size <= 0)
+            {
+                break;
+            }
+            if (cmprs_len < block_size + QBOOT_QUICKLZ_BLOCK_HDR_SIZE)
+            {
+                break;
+            }
+            decomp_len = qbt_quicklz_decompress(decmprs_buf, cmprs_buf + QBOOT_QUICKLZ_BLOCK_HDR_SIZE);
+            if (decomp_len <= 0)
+            {
+                write_len = -1;
+                cmprs_len = 0;
+                break;
+            }
+            if (decomp_len > max_cal_len)
+            {
+                decomp_len = max_cal_len;
+            }
+            *p_crc32 = crc32_cyc_cal(*p_crc32, decmprs_buf, decomp_len);
+            write_len += decomp_len;
+            cmprs_len -= (block_size + QBOOT_QUICKLZ_BLOCK_HDR_SIZE);
+            memcpy(cmprs_buf, cmprs_buf + (block_size + QBOOT_QUICKLZ_BLOCK_HDR_SIZE), cmprs_len);
+        }
+        break;
+    #endif
+
+    #ifdef QBOOT_USING_FASTLZ
+    case QBOOT_ALGO_CMPRS_FASTLZ:
+        while(1)
+        {
+            if (cmprs_len < QBOOT_FASTLZ_BLOCK_HDR_SIZE)
+            {
+                break;
+            }
+            block_size = qbt_fastlz_get_block_size(cmprs_buf);
+            if (block_size <= 0)
+            {
+                break;
+            }
+            if (cmprs_len < block_size + QBOOT_FASTLZ_BLOCK_HDR_SIZE)
+            {
+                break;
+            }
+            decomp_len = qbt_fastlz_decompress(decmprs_buf, QBOOT_BUF_SIZE, cmprs_buf + QBOOT_FASTLZ_BLOCK_HDR_SIZE, block_size);
+            if (decomp_len <= 0)
+            {
+                write_len = -1;
+                cmprs_len = 0;
+                break;
+            }
+            if (decomp_len > max_cal_len)
+            {
+                decomp_len = max_cal_len;
+            }
+            *p_crc32 = crc32_cyc_cal(*p_crc32, decmprs_buf, decomp_len);
+            write_len += decomp_len;
+            cmprs_len -= (block_size + QBOOT_FASTLZ_BLOCK_HDR_SIZE);
+            memcpy(cmprs_buf, cmprs_buf + (block_size + QBOOT_FASTLZ_BLOCK_HDR_SIZE), cmprs_len);
+        }
+        break;
+    #endif
+        
+    default:
+        write_len = -1;
+        cmprs_len = 0;
+        break;
+    }  
+
+    *p_cmprs_len = cmprs_len;
+    
+    return(write_len);
+}
+
+static bool qbt_app_crc_check(const char *fw_part_name, fw_info_t *fw_info)
+{
+    u32 crc32 = 0xFFFFFFFF;
+    u32 cmprs_len = 0;
+    u32 app_cal_pos = 0;
+    u32 src_read_pos = sizeof(fw_info_t);
+    fal_partition_t src_part = fal_partition_find(fw_part_name);
+    int crypt_type = (fw_info->algo & QBOOT_ALGO_CRYPT_MASK);
+    int cmprs_type = (fw_info->algo & QBOOT_ALGO_CMPRS_MASK);
+
+
+    if ( ! qbt_fw_decrypt_init(crypt_type))
+    {
+        LOG_E("Qboot app crc check fail. nonsupport encrypt type.");
+        return(false);
+    }
+
+    if ( ! qbt_fw_decompress_init(cmprs_type))
+    {
+        LOG_E("Qboot app crc check fail. nonsupport compress type.");
+        return(false);
+    }
+
+    while(app_cal_pos < fw_info->raw_size)
+    {
+        int cal_len = 0;
+        int read_len = QBOOT_CMPRS_READ_SIZE;
+        int remain_len = (fw_info->pkg_size + sizeof(fw_info_t) - src_read_pos);
+        if (read_len > remain_len)
+        {
+            read_len = remain_len;
+        }
+        if ( ! qbt_fw_pkg_read(src_part, src_read_pos, cmprs_buf + cmprs_len, read_len, crypt_buf, crypt_type))
+        {
+            LOG_E("Qboot app crc check fail. read package error, part = %s, addr = %08X, length = %d", fw_part_name, src_read_pos, read_len);
+            return(false);
+        }
+        src_read_pos += read_len;
+        cmprs_len += read_len;
+
+        remain_len = fw_info->raw_size - app_cal_pos;
+        cal_len = qbt_app_crc_cal(&crc32, remain_len, crypt_buf, cmprs_buf, &cmprs_len, cmprs_type);
+        if (cal_len < 0)
+        {
+            LOG_E("Qboot app crc check fail. decompress error.");
+            return(false);
+        }
+        app_cal_pos += cal_len;
+    }
+    
+    crc32 ^= 0xFFFFFFFF;
+    if (crc32 != fw_info->raw_crc)
+    {
+        LOG_E("Qboot app crc check fail. cal.crc: %08X != raw.crc: %08X", crc32, fw_info->raw_crc);
+        return(false);
+    }
+    
+    return(true);
+}
+#endif
+
 static bool qbt_fw_release(const char *dst_part_name, const char *src_part_name, fw_info_t *fw_info)
 {
     u32 cmprs_len = 0;
@@ -551,6 +770,17 @@ static bool qbt_fw_check(const char *fw_part_name, fw_info_t *fw_info, bool outp
         if (output_log) LOG_E("Qboot firmware check fail. firmware body check fail.");
         return(false);
     }
+    
+    #ifdef QBOOT_USING_APP_CHECK
+    if ((fw_info->algo2 & QBOOT_ALGO2_VERIFY_MASK) == QBOOT_ALGO2_VERIFY_CRC)
+    {
+        if ( ! qbt_app_crc_check(fw_part_name, fw_info))
+        {
+            if (output_log) LOG_E("Qboot firmware check fail. firmware app check fail.");
+            return(false);
+        }
+    }
+    #endif
 
     if (output_log) LOG_D("Qboot firmware check success.");
     

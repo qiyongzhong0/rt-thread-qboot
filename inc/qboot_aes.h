@@ -13,8 +13,6 @@
 
 #ifdef QBOOT_USING_AES
 
-#include <tiny_md5.h>
-
 void qbt_aes_decrypt_init(void);
 void qbt_aes_decrypt(u8 *dst_buf, const u8 *src_buf, u32 len);
 
