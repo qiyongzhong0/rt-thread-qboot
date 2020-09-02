@@ -10,7 +10,7 @@
 
 |功能模块|选项宏|flash|ram|说明|使用推荐|
 |----|----|----|----|----|---|
-|Qboot|PKG_USING_QBOOT|5392|4192|组件核心功能模块|必备|
+|Qboot|PKG_USING_QBOOT|5392+1156|4192|组件核心功能模块,1156是v1.02版本加入检验app合法性增加的代码尺寸|必备|
 |Syswatch|QBOOT_USING_SYSWATCH|2812|100|使用系统看守组件，以保障系统运行安全|安全第一，推荐使用|
 |Factory key|QBOOT_USING_FACTORY_KEY|80|0|使用恢复出厂按键功能|有按键时，推荐使用|
 |Status led|QBOOT_USING_STATUS_LED|980|20|使用运行状态指示功能|方便识别状态，推荐使用|
