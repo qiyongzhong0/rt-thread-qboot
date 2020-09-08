@@ -54,34 +54,14 @@ void qbt_jump_to_app(void)
 
 static void qbt_reset_periph(void)
 {
-    #if defined (AT32F403xx)
-    #define RCC_AHB_PERIPH_ALL          0xFFFFF2A8
-    #define RCC_APB2_PERIPH_ALL         0xFFC60002
-    #define RCC_APB1_PERIPH_ALL         0xC1003600
-    #elif defined (AT32F413xx)
-    #define RCC_AHB_PERIPH_ALL          0xFFFFFBA8
-    #define RCC_APB2_PERIPH_ALL         0xFF878142
-    #define RCC_APB1_PERIPH_ALL         0x6501B7F0
-    #elif defined (AT32F415xx)
-    #define RCC_AHB_PERIPH_ALL          0xFFFFEBA8
-    #define RCC_APB2_PERIPH_ALL         0xFF078142
-    #define RCC_APB1_PERIPH_ALL         0xED81B3F0
-    #elif defined (AT32F403Axx) || defined (AT32F407xx)
-    #define RCC_AHB_PERIPH_ALL          0xEFFE32A8
-    #define RCC_APB2_PERIPH_ALL         0xF8070182
-    #define RCC_APB1_PERIPH_ALL         0xC1003600
-    #endif
-
-    #if defined (AT32F403Axx) || defined (AT32F407xx)
-    RCC_AHBPeriphResetCmd(RCC_AHB_PERIPH_ALL, ENABLE);
-    RCC_AHBPeriphResetCmd(RCC_AHB_PERIPH_ALL, DISABLE);
-    #endif
-
-    RCC_APB2PeriphResetCmd(RCC_APB2_PERIPH_ALL, ENABLE);
-    RCC_APB2PeriphResetCmd(RCC_APB2_PERIPH_ALL, DISABLE);
-
-    RCC_APB1PeriphResetCmd(RCC_APB1_PERIPH_ALL, ENABLE);
-    RCC_APB1PeriphResetCmd(RCC_APB1_PERIPH_ALL, DISABLE);
+	RCC->AHBRST  = 0xFFFFFFFF;
+	RCC->AHBRST  = 0x00000000;
+	
+	RCC->APB1RST = 0xFFFFFFFF;
+	RCC->APB1RST = 0x00000000;
+	
+	RCC->APB2RST = 0xFFFFFFFF;
+	RCC->APB2RST = 0x00000000;
 }
 
 void qbt_jump_to_app(void)
