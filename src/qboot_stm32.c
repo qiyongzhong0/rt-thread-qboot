@@ -52,19 +52,19 @@ void qbt_jump_to_app(void)
 void qbt_jump_to_app(void)
 {
     typedef void (*app_func_t)(void);
-	u32 app_addr = QBOOT_APP_ADDR;
+    u32 app_addr = QBOOT_APP_ADDR;
     u32 stk_addr = *((__IO uint32_t *)app_addr);
     app_func_t app_func = (app_func_t)(*((__IO uint32_t *)(app_addr + 4)));
 
     if ((((u32)app_func & 0xff000000) != 0x08000000) || ((stk_addr & 0x2ff00000) != 0x20000000))
-	{
+    {
         LOG_E("No legitimate application.");
-		return;
-	}
+        return;
+    }
 
-	rt_kprintf("Jump to application running ... \n");
+    rt_kprintf("Jump to application running ... \n");
     rt_thread_mdelay(200);
-	
+    
     __disable_irq();
     HAL_DeInit();
 
@@ -81,10 +81,10 @@ void qbt_jump_to_app(void)
     HAL_RCC_DeInit();
     
     __set_CONTROL(0);
-	__set_MSP(stk_addr);
-	
-	app_func();//Jump to application running
-	
+    __set_MSP(stk_addr);
+    
+    app_func();//Jump to application running
+    
     LOG_E("Qboot jump to application fail.");
 }
 #endif

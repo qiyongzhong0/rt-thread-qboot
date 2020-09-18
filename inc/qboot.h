@@ -79,10 +79,10 @@
 
 #ifdef QBOOT_USING_AES
 #ifndef QBOOT_AES_IV
-#define QBOOT_AES_IV  		            "0123456789ABCDEF"
+#define QBOOT_AES_IV                    "0123456789ABCDEF"
 #endif
 #ifndef QBOOT_AES_KEY
-#define QBOOT_AES_KEY 				    "0123456789ABCDEF0123456789ABCDEF"
+#define QBOOT_AES_KEY                   "0123456789ABCDEF0123456789ABCDEF"
 #endif
 #endif
 
