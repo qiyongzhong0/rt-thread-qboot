@@ -46,5 +46,10 @@ int qbt_gzip_decompress(u8 *out_buf, u32 out_buf_size)
 
     return(out_buf_size - qbt_strm.avail_out);
 }
+
+void qbt_gzip_deinit(void)
+{
+    inflateEnd(&qbt_strm);
+}
 #endif
 

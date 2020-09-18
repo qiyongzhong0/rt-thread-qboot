@@ -244,7 +244,36 @@ static bool qbt_fw_decompress_init(int cmprs_type)
         break;
     #endif
     
+    default:
+        return(false);
+    }
+    
+    return(true);
+}
 
+static bool qbt_fw_decompress_deinit(int cmprs_type)
+{
+    switch (cmprs_type)
+    {
+    case QBOOT_ALGO_CMPRS_NONE:
+        break;
+        
+    #ifdef QBOOT_USING_GZIP
+    case QBOOT_ALGO_CMPRS_GZIP:
+        qbt_gzip_deinit();
+        break;
+    #endif
+    
+    #ifdef QBOOT_USING_QUICKLZ
+    case QBOOT_ALGO_CMPRS_QUICKLZ:
+        break;
+    #endif
+
+    #ifdef QBOOT_USING_FASTLZ
+    case QBOOT_ALGO_CMPRS_FASTLZ:
+        break;
+    #endif
+    
     default:
         return(false);
     }
@@ -619,6 +648,7 @@ static bool qbt_app_crc_check(const char *fw_part_name, fw_info_t *fw_info)
         }
         if ( ! qbt_fw_pkg_read(src_part, src_read_pos, cmprs_buf + cmprs_len, read_len, crypt_buf, crypt_type))
         {
+            qbt_fw_decompress_deinit(cmprs_type);
             LOG_E("Qboot app crc check fail. read package error, part = %s, addr = %08X, length = %d", fw_part_name, src_read_pos, read_len);
             return(false);
         }
@@ -629,12 +659,14 @@ static bool qbt_app_crc_check(const char *fw_part_name, fw_info_t *fw_info)
         cal_len = qbt_app_crc_cal(&crc32, remain_len, crypt_buf, cmprs_buf, &cmprs_len, cmprs_type);
         if (cal_len < 0)
         {
+            qbt_fw_decompress_deinit(cmprs_type);
             LOG_E("Qboot app crc check fail. decompress error.");
             return(false);
         }
         app_cal_pos += cal_len;
     }
     
+    qbt_fw_decompress_deinit(cmprs_type);
     crc32 ^= 0xFFFFFFFF;
     if (crc32 != fw_info->raw_crc)
     {
@@ -672,6 +704,7 @@ static bool qbt_fw_release(const char *dst_part_name, const char *src_part_name,
     if ((fal_partition_erase(dst_part, 0, fw_info->raw_size) < 0) 
         || (fal_partition_erase(dst_part, dst_part->len - sizeof(fw_info_t), sizeof(fw_info_t)) < 0))
     {
+        qbt_fw_decompress_deinit(cmprs_type);
         LOG_E("Qboot release firmware fail. erase %s error.", dst_part_name);
         return(false);
     }
@@ -688,6 +721,7 @@ static bool qbt_fw_release(const char *dst_part_name, const char *src_part_name,
         }
         if ( ! qbt_fw_pkg_read(src_part, src_read_pos, cmprs_buf + cmprs_len, read_len, crypt_buf, crypt_type))
         {
+            qbt_fw_decompress_deinit(cmprs_type);
             LOG_E("Qboot release firmware fail. read package error, part = %s, addr = %08X, length = %d", src_part_name, src_read_pos, read_len);
             return(false);
         }
@@ -697,6 +731,7 @@ static bool qbt_fw_release(const char *dst_part_name, const char *src_part_name,
         write_len = qbt_dest_part_write(dst_part, dst_write_pos, crypt_buf, cmprs_buf, &cmprs_len, cmprs_type);
         if (write_len < 0)
         {
+            qbt_fw_decompress_deinit(cmprs_type);
             LOG_E("Qboot release firmware fail. write destination error, part = %s, addr = %08X", dst_part_name, dst_write_pos);
             return(false);
         }
@@ -705,7 +740,8 @@ static bool qbt_fw_release(const char *dst_part_name, const char *src_part_name,
         rt_kprintf("\b\b\b%02d%%", (dst_write_pos * 100 / fw_info->raw_size));
     }
     rt_kprintf("\n");
-
+    
+    qbt_fw_decompress_deinit(cmprs_type);
     if ( ! qbt_fw_info_write(dst_part_name, fw_info, true))
     {
         LOG_E("Qboot release firmware fail. write firmware to %s fail.", dst_part_name);

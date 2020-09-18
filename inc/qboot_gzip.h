@@ -15,6 +15,7 @@
 void qbt_gzip_init(void);
 void qbt_gzip_set_in(const u8 *in_buf, u32 in_size);
 int qbt_gzip_decompress(u8 *out_buf, u32 out_buf_size);
+void qbt_gzip_deinit(void);
 
 #endif
 
