@@ -6,6 +6,7 @@
  * 2020-07-06     qiyongzhong       first version
  * 2020-08-31     qiyongzhong       fix qbt_jump_to_app type from static to weak
  * 2020-09-01     qiyongzhong       add app verify when checking firmware
+ * 2020-09-18     qiyongzhong       fix bug of gzip decompression
  */
 
 #include <rtthread.h>
@@ -42,7 +43,7 @@
 
 #include <rtdbg.h>
 
-#define QBOOT_VER_MSG                   "V1.0.2 2020.09.03"
+#define QBOOT_VER_MSG                   "V1.0.3 2020.09.19"
 #define QBOOT_SHELL_PROMPT              "Qboot>"
 
 #define QBOOT_BUF_SIZE                  4096//must is 4096

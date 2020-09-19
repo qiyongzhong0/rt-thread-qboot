@@ -4,6 +4,7 @@
  * Change Logs:
  * Date           Author            Notes
  * 2020-07-08     qiyongzhong       first version
+ * 2020-09-18     qiyongzhong       add deinit function
  */
 
 #include <qboot_gzip.h>
