@@ -13,6 +13,7 @@
 #include <rtthread.h>
 #include <rtdevice.h>
 #include <fal.h>
+#include <board.h>
 #include <qboot.h>
 #include <qboot_aes.h>
 #include <qboot_gzip.h>
