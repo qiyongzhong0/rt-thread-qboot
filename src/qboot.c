@@ -7,6 +7,7 @@
  * 2020-08-31     qiyongzhong       fix qbt_jump_to_app type from static to weak
  * 2020-09-01     qiyongzhong       add app verify when checking firmware
  * 2020-09-18     qiyongzhong       fix bug of gzip decompression
+ * 2020-09-22     qiyongzhong       add erase firmware function, update version to v1.04
  */
 
 #include <rtthread.h>
@@ -43,7 +44,7 @@
 
 #include <rtdbg.h>
 
-#define QBOOT_VER_MSG                   "V1.0.3 2020.09.19"
+#define QBOOT_VER_MSG                   "V1.0.4 2020.09.22"
 #define QBOOT_SHELL_PROMPT              "Qboot>"
 
 #define QBOOT_BUF_SIZE                  4096//must is 4096
@@ -860,6 +861,7 @@ static bool qbt_fw_update(const char *dst_part_name, const char *src_part_name, 
     return(true);    
 }
 
+#ifdef CHIP_FAMILY_STM32
 RT_WEAK void qbt_jump_to_app(void)
 {
     typedef void (*app_func_t)(void);
@@ -898,6 +900,7 @@ RT_WEAK void qbt_jump_to_app(void)
     
     LOG_E("Qboot jump to application fail.");
 }
+#endif
 
 #ifdef QBOOT_USING_STATUS_LED
 static void qbt_status_led_init(void)
@@ -1339,6 +1342,21 @@ static void qbt_fw_info_show(const char *part_name)
     rt_kprintf("| Build timestamp       | %20d |\n", fw_info.time_stamp);
     rt_kprintf("\n");
 }
+static bool qbt_fw_delete(const char *part_name, u32 part_size)
+{
+    fal_partition_t dst_part = fal_partition_find(part_name);
+    
+    rt_kprintf("Erasing %s partition ... \n", part_name);
+    if (fal_partition_erase(dst_part, 0, part_size) < 0)
+    {
+        LOG_E("Qboot delete firmware fail. erase %s error.", part_name);
+        return(false);
+    }
+    
+    rt_kprintf("Qboot delete firmware success.\n");
+    
+    return(true);
+}
 static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
 {
     const char *cmd_info[] = {
@@ -1348,6 +1366,7 @@ static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
         "qboot clone src_part dst_part  - clone src partition to dst partiton\n",
         "qboot release part             - release firmware from partiton\n",
         "qboot verify part              - verify released code of partition\n",
+        "qboot del part                 - delete firmware of partiton\n",
         "qboot jump                     - jump to application\n",
         "\n"
         };
@@ -1456,11 +1475,35 @@ static void qbt_shell_cmd(rt_uint8_t argc, char **argv)
         return;
     }
     
+    if (strcmp(argv[1], "del") == 0)
+    {
+        char *part_name;
+        
+        if (argc < 3)
+        {
+            rt_kprintf(cmd_info[6]);
+            return;
+        }
+
+        part_name = argv[2];
+        if ( ! qbt_fw_check(part_name, &fw_info, false))
+        {
+            rt_kprintf("%s partition without firmware.\n", part_name);
+            return;
+        }
+            
+        qbt_fw_delete(part_name, fw_info.pkg_size);
+        
+        return;
+    }
+    
     if (strcmp(argv[1], "jump") == 0)
     {
         qbt_jump_to_app();
         return;
     }
+    
+    rt_kprintf("No supported command.\n");
 }
 MSH_CMD_EXPORT_ALIAS(qbt_shell_cmd, qboot, Quick bootloader test commands);
 #endif
