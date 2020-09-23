@@ -13,7 +13,6 @@
 #include <rtthread.h>
 #include <rtdevice.h>
 #include <fal.h>
-#include <board.h>
 #include <qboot.h>
 #include <qboot_aes.h>
 #include <qboot_gzip.h>
@@ -862,7 +861,6 @@ static bool qbt_fw_update(const char *dst_part_name, const char *src_part_name, 
     return(true);    
 }
 
-#ifdef CHIP_FAMILY_STM32
 RT_WEAK void qbt_jump_to_app(void)
 {
     typedef void (*app_func_t)(void);
@@ -901,7 +899,6 @@ RT_WEAK void qbt_jump_to_app(void)
     
     LOG_E("Qboot jump to application fail.");
 }
-#endif
 
 #ifdef QBOOT_USING_STATUS_LED
 static void qbt_status_led_init(void)
