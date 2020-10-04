@@ -8,6 +8,7 @@
  * 2020-09-01     qiyongzhong       add app verify when checking firmware
  * 2020-09-18     qiyongzhong       fix bug of gzip decompression
  * 2020-09-22     qiyongzhong       add erase firmware function, update version to v1.04
+ * 2020-09-22     qiyongzhong       fix to support stm32h7xx, update version to v1.05
  */
 
 #include <rtthread.h>
@@ -48,7 +49,7 @@
 
 #include <rtdbg.h>
 
-#define QBOOT_VER_MSG                   "V1.0.4 2020.09.22"
+#define QBOOT_VER_MSG                   "V1.0.5 2020.10.04"
 #define QBOOT_SHELL_PROMPT              "Qboot>"
 
 #define QBOOT_BUF_SIZE                  4096//must is 4096
@@ -178,8 +179,9 @@ static bool qbt_fw_crc_check(const char *part_name, u32 addr, u32 size, u32 crc)
 static bool qbt_release_sign_check(const char *part_name, fw_info_t *fw_info)
 {
     u32 release_sign = 0;
-    fal_partition_t part = (fal_partition_t)fal_partition_find(part_name);
-    u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x07) & ~0x07);
+
+    fal_partition_t part = fal_partition_find(part_name);
+    u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x1F) & ~0x1F);
 
     if (fal_partition_read(part, pos, (u8 *)&release_sign, sizeof(u32)) < 0)
     {
@@ -193,8 +195,9 @@ static bool qbt_release_sign_check(const char *part_name, fw_info_t *fw_info)
 static bool qbt_release_sign_write(const char *part_name, fw_info_t *fw_info)
 {
     u32 release_sign = 0;
-    fal_partition_t part = (fal_partition_t)fal_partition_find(part_name);
-    u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x07) & ~0x07);
+
+    fal_partition_t part = fal_partition_find(part_name);
+    u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x1F) & ~0x1F);
 
     if (fal_partition_write(part, pos, (u8 *)&release_sign, sizeof(u32)) < 0)
     {
@@ -1154,8 +1157,11 @@ static bool qbt_release_from_part(const char *part_name, bool check_sign)
     {
         return(false);
     }
-    
-    qbt_release_sign_write(part_name, &fw_info);
+
+    if ( ! qbt_release_sign_check(part_name, &fw_info))
+    {
+        qbt_release_sign_write(part_name, &fw_info);
+    }
     
     LOG_I("Release firmware success from %s to %s.", part_name, fw_info.part_name);
     return(true);
