@@ -175,7 +175,7 @@ static bool qbt_release_sign_check(const char *part_name, fw_info_t *fw_info)
 {
     u32 release_sign = 0;
     fal_partition_t part = fal_partition_find(part_name);
-    u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x07) & ~0x07);
+    u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x1F) & ~0x1F);
 
     if (fal_partition_read(part, pos, (u8 *)&release_sign, sizeof(u32)) < 0)
     {
@@ -190,7 +190,7 @@ static bool qbt_release_sign_write(const char *part_name, fw_info_t *fw_info)
 {
     u32 release_sign = 0;
     fal_partition_t part = fal_partition_find(part_name);
-    u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x07) & ~0x07);
+    u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x1F) & ~0x1F);
 
     if (fal_partition_write(part, pos, (u8 *)&release_sign, sizeof(u32)) < 0)
     {
@@ -1150,8 +1150,11 @@ static bool qbt_release_from_part(const char *part_name, bool check_sign)
     {
         return(false);
     }
-    
-    qbt_release_sign_write(part_name, &fw_info);
+
+    if ( ! qbt_release_sign_check(part_name, &fw_info))
+    {
+        qbt_release_sign_write(part_name, &fw_info);
+    }
     
     LOG_I("Release firmware success from %s to %s.", part_name, fw_info.part_name);
     return(true);
