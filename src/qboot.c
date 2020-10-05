@@ -19,6 +19,10 @@
 #include <qboot_gzip.h>
 #include <qboot_fastlz.h>
 #include <qboot_quicklz.h>
+#include <string.h>
+
+#include "shell.h"
+#include "crc32.h"
 
 #ifdef QBOOT_USING_STATUS_LED
 #include <qled.h>
@@ -109,7 +113,7 @@ static bool qbt_part_is_exist(const char *part_name)
 
 static bool qbt_fw_info_read(const char *part_name, fw_info_t *fw_info, bool from_tail)
 {
-    fal_partition_t part = fal_partition_find(part_name);
+    fal_partition_t part = (fal_partition_t)fal_partition_find(part_name);
     u32 addr = from_tail ? (part->len - sizeof(fw_info_t)) : 0;
     if (fal_partition_read(part, addr, (u8 *)fw_info, sizeof(fw_info_t)) < 0)
     {
@@ -120,7 +124,7 @@ static bool qbt_fw_info_read(const char *part_name, fw_info_t *fw_info, bool fro
 
 static bool qbt_fw_info_write(const char *part_name, fw_info_t *fw_info, bool to_tail)
 {
-    fal_partition_t part = fal_partition_find(part_name);
+    fal_partition_t part = (fal_partition_t)fal_partition_find(part_name);
     u32 addr = to_tail ? (part->len - sizeof(fw_info_t)) : 0;
     if (fal_partition_write(part, addr, (u8 *)fw_info, sizeof(fw_info_t)) < 0)
     {
@@ -143,7 +147,7 @@ static bool qbt_fw_crc_check(const char *part_name, u32 addr, u32 size, u32 crc)
 {
     u32 pos = 0;
     u32 crc32 = 0xFFFFFFFF;
-    fal_partition_t part = fal_partition_find(part_name);
+    fal_partition_t part = (fal_partition_t)fal_partition_find(part_name);
     
     while (pos < size)
     {
@@ -175,7 +179,8 @@ static bool qbt_fw_crc_check(const char *part_name, u32 addr, u32 size, u32 crc)
 static bool qbt_release_sign_check(const char *part_name, fw_info_t *fw_info)
 {
     u32 release_sign = 0;
-    fal_partition_t part = fal_partition_find(part_name);
+
+    fal_partition_t part = (fal_partition_t)fal_partition_find(part_name);
     u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x1F) & ~0x1F);
 
     if (fal_partition_read(part, pos, (u8 *)&release_sign, sizeof(u32)) < 0)
@@ -190,7 +195,8 @@ static bool qbt_release_sign_check(const char *part_name, fw_info_t *fw_info)
 static bool qbt_release_sign_write(const char *part_name, fw_info_t *fw_info)
 {
     u32 release_sign = 0;
-    fal_partition_t part = fal_partition_find(part_name);
+
+    fal_partition_t part = (fal_partition_t)fal_partition_find(part_name);
     u32 pos = (((sizeof(fw_info_t) + fw_info->pkg_size) + 0x1F) & ~0x1F);
 
     if (fal_partition_write(part, pos, (u8 *)&release_sign, sizeof(u32)) < 0)
@@ -623,7 +629,7 @@ static bool qbt_app_crc_check(const char *fw_part_name, fw_info_t *fw_info)
     u32 cmprs_len = 0;
     u32 app_cal_pos = 0;
     u32 src_read_pos = sizeof(fw_info_t);
-    fal_partition_t src_part = fal_partition_find(fw_part_name);
+    fal_partition_t src_part = (fal_partition_t)fal_partition_find(fw_part_name);
     int crypt_type = (fw_info->algo & QBOOT_ALGO_CRYPT_MASK);
     int cmprs_type = (fw_info->algo & QBOOT_ALGO_CMPRS_MASK);
 
@@ -686,8 +692,8 @@ static bool qbt_fw_release(const char *dst_part_name, const char *src_part_name,
     u32 cmprs_len = 0;
     u32 dst_write_pos = 0;
     u32 src_read_pos = sizeof(fw_info_t);
-    fal_partition_t src_part = fal_partition_find(src_part_name);
-    fal_partition_t dst_part = fal_partition_find(dst_part_name);
+    fal_partition_t src_part = (fal_partition_t)fal_partition_find(src_part_name);
+    fal_partition_t dst_part = (fal_partition_t)fal_partition_find(dst_part_name);
     int crypt_type = (fw_info->algo & QBOOT_ALGO_CRYPT_MASK);
     int cmprs_type = (fw_info->algo & QBOOT_ALGO_CMPRS_MASK);
 
@@ -1100,7 +1106,7 @@ static bool qbt_app_resume_from(const char *src_part_name)
     }
 
     #ifdef QBOOT_USING_PRODUCT_CODE
-    if ( strcmp(fw_info.prod_code, QBOOT_PRODUCT_CODE) != 0)
+    if ( strcmp((char *)fw_info.prod_code, QBOOT_PRODUCT_CODE) != 0)
     {
         LOG_E("Qboot resume fail from %s.", src_part_name);
         LOG_E("The product code error. ");
@@ -1108,7 +1114,7 @@ static bool qbt_app_resume_from(const char *src_part_name)
     }
     #endif
     
-    if (strcmp(fw_info.part_name, QBOOT_APP_PART_NAME) != 0)
+    if (strcmp((char *)fw_info.part_name, QBOOT_APP_PART_NAME) != 0)
     {
         LOG_E("Qboot resume fail from %s.", src_part_name);
         LOG_E("The firmware of %s partition is not application. fw_info.part_name(%s) != %s", src_part_name, fw_info.part_name, QBOOT_APP_PART_NAME);
@@ -1132,7 +1138,7 @@ static bool qbt_release_from_part(const char *part_name, bool check_sign)
     }
 
     #ifdef QBOOT_USING_PRODUCT_CODE
-    if ( strcmp(fw_info.prod_code, QBOOT_PRODUCT_CODE) != 0)
+    if ( strcmp((char *)fw_info.prod_code, QBOOT_PRODUCT_CODE) != 0)
     {
         LOG_E("The product code error.");
         return(false);
@@ -1147,7 +1153,7 @@ static bool qbt_release_from_part(const char *part_name, bool check_sign)
         }
     }
     
-    if ( ! qbt_fw_update(fw_info.part_name, part_name, &fw_info))
+    if ( ! qbt_fw_update((char *)fw_info.part_name, part_name, &fw_info))
     {
         return(false);
     }
@@ -1235,16 +1241,18 @@ static void qbt_thread_entry(void *params)
     rt_hw_cpu_reset();
 }
 
-static void qbt_startup(void)
+static int qbt_startup(void)
 {
     rt_thread_t tid = rt_thread_create("Qboot", qbt_thread_entry, NULL, QBOOT_THREAD_STACK_SIZE, QBOOT_THREAD_PRIO, 20);
     if (tid == NULL)
     {
         LOG_E("Qboot thread create fail.");
-        return;
+        return -RT_ERROR;
     }
-    
+
     rt_thread_startup(tid);
+
+    return RT_EOK;
 }
 INIT_APP_EXPORT(qbt_startup);
 
@@ -1252,8 +1260,8 @@ INIT_APP_EXPORT(qbt_startup);
 static bool qbt_fw_clone(const char *dst_part_name, const char *src_part_name, u32 fw_pkg_size)
 {
     u32 pos = 0;
-    fal_partition_t src_part = fal_partition_find(src_part_name);
-    fal_partition_t dst_part = fal_partition_find(dst_part_name);
+    fal_partition_t src_part = (fal_partition_t)fal_partition_find(src_part_name);
+    fal_partition_t dst_part = (fal_partition_t)fal_partition_find(dst_part_name);
 
     rt_kprintf("Erasing %s partition ... \n", dst_part_name);
     if (fal_partition_erase(dst_part, 0, fw_pkg_size) < 0)
@@ -1346,7 +1354,7 @@ static void qbt_fw_info_show(const char *part_name)
 }
 static bool qbt_fw_delete(const char *part_name, u32 part_size)
 {
-    fal_partition_t dst_part = fal_partition_find(part_name);
+    fal_partition_t dst_part = (fal_partition_t)fal_partition_find(part_name);
     
     rt_kprintf("Erasing %s partition ... \n", part_name);
     if (fal_partition_erase(dst_part, 0, part_size) < 0)
