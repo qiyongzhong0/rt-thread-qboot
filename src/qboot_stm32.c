@@ -56,7 +56,7 @@ void qbt_jump_to_app(void)
     u32 stk_addr = *((__IO uint32_t *)app_addr);
     app_func_t app_func = (app_func_t)(*((__IO uint32_t *)(app_addr + 4)));
 
-    if ((((u32)app_func & 0xff000000) != 0x08000000) || ((stk_addr & 0x2ff00000) != 0x20000000))
+    if ((((u32)app_func & 0xff000000) != 0x08000000) || (((stk_addr & 0x2ff00000) != 0x20000000) && ((stk_addr & 0x2ff00000) != 0x24000000)))
     {
         LOG_E("No legitimate application.");
         return;

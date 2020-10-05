@@ -97,7 +97,7 @@ const u8 *crypt_buf = NULL;
 #endif
 
 #ifdef QBOOT_USING_GZIP
-#define GZIP_REMAIN_BUF_SIZE 8
+#define GZIP_REMAIN_BUF_SIZE 32
 static int gzip_remain_len = 0;
 static u8 gzip_remain_buf[GZIP_REMAIN_BUF_SIZE];
 #endif
