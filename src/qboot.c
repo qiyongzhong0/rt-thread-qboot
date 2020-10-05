@@ -1166,6 +1166,7 @@ static void qbt_thread_entry(void *params)
     #define QBOOT_REBOOT_DELAY_MS       5000
     
     #ifdef QBOOT_USING_SHELL
+    rt_thread_mdelay(2);
     qbt_close_sys_shell();
     #endif
     
