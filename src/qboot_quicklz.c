@@ -32,7 +32,7 @@ u32 qbt_quicklz_get_block_size(const u8 *comp_datas)
 
 u32 qbt_quicklz_decompress(u8 *out_buf, const u8 *in_buf)
 {
-    return(qlz_decompress(in_buf, out_buf, &qbt_quicklz_state));
+    return(qlz_decompress((char *)in_buf, out_buf, &qbt_quicklz_state));
 }
 
 #endif
