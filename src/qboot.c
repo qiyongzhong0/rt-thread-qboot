@@ -8,7 +8,7 @@
  * 2020-09-01     qiyongzhong       add app verify when checking firmware
  * 2020-09-18     qiyongzhong       fix bug of gzip decompression
  * 2020-09-22     qiyongzhong       add erase firmware function, update version to v1.04
- * 2020-09-22     qiyongzhong       fix to support stm32h7xx, update version to v1.05
+ * 2020-10-05     qiyongzhong       fix to support stm32h7xx, update version to v1.05
  */
 
 #include <rtthread.h>
@@ -45,7 +45,7 @@
 
 #include <rtdbg.h>
 
-#define QBOOT_VER_MSG                   "V1.0.5 2020.10.04"
+#define QBOOT_VER_MSG                   "V1.0.5 2020.10.05"
 #define QBOOT_SHELL_PROMPT              "Qboot>"
 
 #define QBOOT_BUF_SIZE                  4096//must is 4096
