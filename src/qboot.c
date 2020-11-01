@@ -97,7 +97,7 @@ static u8 cmprs_buf[QBOOT_CMPRS_BUF_SIZE];
 #if (defined(QBOOT_USING_AES) || defined(QBOOT_USING_GZIP) || defined(QBOOT_USING_QUICKLZ) || defined(QBOOT_USING_FASTLZ))
 static u8 crypt_buf[QBOOT_BUF_SIZE];
 #else
-const u8 *crypt_buf = NULL;
+static u8 *crypt_buf = NULL;
 #endif
 
 #ifdef QBOOT_USING_GZIP
