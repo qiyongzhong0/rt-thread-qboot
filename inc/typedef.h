@@ -22,7 +22,9 @@ typedef unsigned long long      u64;
 typedef float                   f32;
 typedef double                  f64;
 
+#ifndef bool
 typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+#endif
 
 typedef void (*PHOOK_t)(void);
 
