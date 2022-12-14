@@ -1036,26 +1036,25 @@ static bool qbt_shell_init(const char *shell_dev_name)
     return(true);
 }
 
+
 static bool qbt_shell_key_check(void)
 {
+    bool ret = false;
     char ch;
-    rt_tick_t tick_start = rt_tick_get();
     rt_tick_t tmo = rt_tick_from_millisecond(QBOOT_SHELL_KEY_CHK_TMO * 1000);
 
-    while(rt_tick_get() - tick_start < tmo)
+    if ( rt_sem_take(qbt_shell_sem, tmo) == RT_EOK)
     {
         if (rt_device_read(qbt_shell_dev, -1, &ch, 1) > 0)
         {    
             if (ch == 0x0d)
             {
-                return(true);
+                ret = true;
             }
-            continue;
         }
-        rt_sem_take(qbt_shell_sem, 100);
     }
     
-    return(false);
+    return ret;
 }
 
 static bool qbt_startup_shell(bool wait_press_key)
