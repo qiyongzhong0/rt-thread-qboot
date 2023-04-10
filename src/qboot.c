@@ -1044,6 +1044,10 @@ static bool qbt_shell_key_check(void)
 
     while(rt_tick_get() - tick_start < tmo)
     {
+        if (rt_sem_take(qbt_shell_sem, 100) != RT_EOK)
+        {
+            continue;
+        }
         if (rt_device_read(qbt_shell_dev, -1, &ch, 1) > 0)
         {    
             if (ch == 0x0d)
@@ -1052,7 +1056,6 @@ static bool qbt_shell_key_check(void)
             }
             continue;
         }
-        rt_sem_take(qbt_shell_sem, 100);
     }
     
     return(false);
