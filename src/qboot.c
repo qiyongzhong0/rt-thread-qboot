@@ -794,25 +794,25 @@ static bool qbt_fw_check(const char *fw_part_name, fw_info_t *fw_info, bool outp
 {
     if ( ! qbt_part_is_exist(fw_part_name))
     {
-        if (output_log) LOG_E("Qboot firmware check fail. partition %d is not exist.", fw_part_name);
+        if (output_log) LOG_E("Qboot firmware check fail. partition \"%s\" is not exist.", fw_part_name);
         return(false);
     }
 
     if ( ! qbt_fw_info_read(fw_part_name, fw_info, false))
     {
-        if (output_log) LOG_E("Qboot firmware check fail. read firmware infomation fail.");
+        if (output_log) LOG_E("Qboot firmware check fail. partition \"%s\" read fail.", fw_part_name);
         return(false);
     }
 
     if ( ! qbt_fw_info_check(fw_info))
     {
-        if (output_log) LOG_E("Qboot firmware check fail. firmware infomation check fail.");
+        if (output_log) LOG_E("Qboot firmware check fail. partition \"%s\" infomation check fail.", fw_part_name);
         return(false);
     }
 
     if ( ! qbt_fw_crc_check(fw_part_name, sizeof(fw_info_t), fw_info->pkg_size, fw_info->pkg_crc))
     {
-        if (output_log) LOG_E("Qboot firmware check fail. firmware body check fail.");
+        if (output_log) LOG_E("Qboot firmware check fail. partition \"%s\" body check fail.", fw_part_name);
         return(false);
     }
     
@@ -821,13 +821,13 @@ static bool qbt_fw_check(const char *fw_part_name, fw_info_t *fw_info, bool outp
     {
         if ( ! qbt_app_crc_check(fw_part_name, fw_info))
         {
-            if (output_log) LOG_E("Qboot firmware check fail. firmware app check fail.");
+            if (output_log) LOG_E("Qboot firmware check fail. partition \"%s\" app check fail.", fw_part_name);
             return(false);
         }
     }
     #endif
 
-    if (output_log) LOG_D("Qboot firmware check success.");
+    if (output_log) LOG_D("Qboot partition \"%s\" firmware check success.", fw_part_name);
     
     return(true);
 }
@@ -838,7 +838,7 @@ static bool qbt_fw_update(const char *dst_part_name, const char *src_part_name, 
     
     if ( ! qbt_part_is_exist(dst_part_name))
     {
-        LOG_E("Qboot firmware update fail. destination partition %d is not exist.", dst_part_name);
+        LOG_E("Qboot firmware update fail. destination partition %s is not exist.", dst_part_name);
         return(false);
     }
 

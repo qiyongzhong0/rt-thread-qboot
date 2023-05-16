@@ -14,7 +14,7 @@
 #include <rtdevice.h>
 #include <qboot.h>
 #include <hc32f460.h>
-#include "hc32_ddl.h"
+#include "hc32_ll.h"
 
 //#define QBOOT_APP_RUN_IN_QSPI_FLASH
 //#define QBOOT_DEBUG
@@ -56,21 +56,19 @@ void qbt_jump_to_app(void)
 
 static void qbt_reset_periph(void)
 {
-    #define ENABLE_FCG0_REG_WRITE()             (M4_MSTP->FCG0PC = 0xa5a50001u)
-    #define DISABLE_FCG0_REG_WRITE()            (M4_MSTP->FCG0PC = 0xa5a50000u)
     #define DEFAULT_FCG0                        (0xFFFFFAEEul)
     #define DEFAULT_FCG1                        (0xFFFFFFFFul)
     #define DEFAULT_FCG2                        (0xFFFFFFFFul)
     #define DEFAULT_FCG3                        (0xFFFFFFFFul)
 
-    ENABLE_FCG0_REG_WRITE();
+    PWC_FCG0_REG_Unlock();
 
-    M4_MSTP->FCG0 = DEFAULT_FCG0;
-    M4_MSTP->FCG1 = DEFAULT_FCG1;
-    M4_MSTP->FCG2 = DEFAULT_FCG2;
-    M4_MSTP->FCG3 = DEFAULT_FCG3;
+    CM_PWC->FCG0 = DEFAULT_FCG0;
+    CM_PWC->FCG1 = DEFAULT_FCG1;
+    CM_PWC->FCG2 = DEFAULT_FCG2;
+    CM_PWC->FCG3 = DEFAULT_FCG3;
 
-    DISABLE_FCG0_REG_WRITE();
+    PWC_FCG0_REG_Lock();
 }
 
 void qbt_jump_to_app(void)
@@ -103,11 +101,11 @@ void qbt_jump_to_app(void)
     SysTick->LOAD = 0;
     SysTick->VAL = 0;
     
-    CLK_MrcCmd(Enable);
-    CLK_SetSysClkSource(ClkSysSrcMRC);
-    EFM_Unlock();
-    EFM_SetLatency(0);
-    EFM_Lock();
+    CLK_MrcCmd(ENABLE);
+    CLK_SetSysClockSrc(CLK_SYSCLK_SRC_MRC);
+    EFM_FWMC_Cmd(ENABLE);
+    EFM_SetWaitCycle(EFM_WAIT_CYCLE0);
+    EFM_FWMC_Cmd(DISABLE);
     
     __set_CONTROL(0);
     __set_MSP(stk_addr);
