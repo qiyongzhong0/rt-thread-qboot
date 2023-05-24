@@ -13,6 +13,7 @@
 
 #include <rtthread.h>
 #include <rtdevice.h>
+#include <rthw.h>
 #include <fal.h>
 #include <qboot.h>
 #include <qboot_aes.h>
@@ -868,43 +869,9 @@ static bool qbt_fw_update(const char *dst_part_name, const char *src_part_name, 
     return(true);    
 }
 
-RT_WEAK void qbt_jump_to_app(void)
+rt_weak void qbt_jump_to_app(void)
 {
-    typedef void (*app_func_t)(void);
-    u32 app_addr = QBOOT_APP_ADDR;
-    u32 stk_addr = *((__IO uint32_t *)app_addr);
-    app_func_t app_func = (app_func_t)(*((__IO uint32_t *)(app_addr + 4)));
 
-    if ((((u32)app_func & 0xff000000) != 0x08000000) || ((stk_addr & 0x2ff00000) != 0x20000000))
-    {
-        LOG_E("No legitimate application.");
-        return;
-    }
-
-    rt_kprintf("Jump to application running ... \n");
-    rt_thread_mdelay(200);
-    
-    __disable_irq();
-    HAL_DeInit();
-
-    for(int i=0; i<128; i++)
-    {
-        HAL_NVIC_DisableIRQ(i);
-        HAL_NVIC_ClearPendingIRQ(i);
-    }
-    
-    SysTick->CTRL = 0;
-    SysTick->LOAD = 0;
-    SysTick->VAL = 0;
-    
-    HAL_RCC_DeInit();
-    
-    __set_CONTROL(0);
-    __set_MSP(stk_addr);
-    
-    app_func();//Jump to application running
-    
-    LOG_E("Qboot jump to application fail.");
 }
 
 #ifdef QBOOT_USING_STATUS_LED
