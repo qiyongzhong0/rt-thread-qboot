@@ -1,5 +1,5 @@
 /*
- * qboot_stm32.c
+ * qboot_hc32f460.c
  *
  * Change Logs:
  * Date           Author            Notes
