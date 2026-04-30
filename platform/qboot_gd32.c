@@ -180,11 +180,11 @@ void hal_DeInit(void)
 rt_weak void qbt_jump_to_app(void)
 {
    typedef void (*app_func_t)(void);
-    u32 app_addr = QBOOT_APP_ADDR;
-    u32 stk_addr = *((__IO uint32_t *)app_addr);
+    rt_uint32_t app_addr = QBOOT_APP_ADDR;
+    rt_uint32_t stk_addr = *((__IO uint32_t *)app_addr);
     app_func_t app_func = (app_func_t)(*((__IO uint32_t *)(app_addr + 4)));
 
-    if ((((u32)app_func & 0xff000000) != 0x08000000) || ((stk_addr & 0x2ff00000) != 0x20000000))
+    if ((((rt_uint32_t)app_func & 0xff000000) != 0x08000000) || ((stk_addr & 0x2ff00000) != 0x20000000))
     {
         LOG_E("No legitimate application.");
         return;

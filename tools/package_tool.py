@@ -1,135 +1,149 @@
-'''
-Author: your name
-Date: 2021-07-15 10:05:16
-LastEditTime: 2025-09-25 08:00:00
-LastEditors: wdfk_prog
-Description: Packages a binary patch file into an RBL package, using the new firmware file for header metadata.
-FilePath: /pkg/package_tool.py
-'''
+#!/usr/bin/env python3
+"""
+Pure RBL Packager (raw required)
+"""
+
 import os
 import struct
 import zlib
 import sys
+import argparse
+import time
 
-# --- C语言宏定义对应的Python常量 ---
+# ================== ALGO 定义 ==================
 
-# 加密算法
 QBOOT_ALGO_CRYPT_NONE = 0
+QBOOT_ALGO_CRYPT_XOR  = 1
+QBOOT_ALGO_CRYPT_AES  = 2
 
-# 压缩算法 (用于告知Bootloader包体类型是差分补丁)
+QBOOT_ALGO_CMPRS_NONE       = (0 << 8)
+QBOOT_ALGO_CMPRS_GZIP       = (1 << 8)
+QBOOT_ALGO_CMPRS_QUICKLZ    = (2 << 8)
+QBOOT_ALGO_CMPRS_FASTLZ     = (3 << 8)
 QBOOT_ALGO_CMPRS_HPATCHLITE = (4 << 8)
 
-# 校验算法
-QBOOT_ALGO2_VERIFY_CRC = 1
+QBOOT_ALGO2_VERIFY_NONE = 0
+QBOOT_ALGO2_VERIFY_CRC  = 1
 
+# ==================================================
 
-def crc32(bytes_obj):
-    """计算字节对象的CRC32校验和"""
-    return zlib.crc32(bytes_obj) & 0xFFFFFFFF
+def crc32(data: bytes) -> int:
+    return zlib.crc32(data) & 0xFFFFFFFF
 
+def create_rbl_header(raw_fw: bytes, pkg_obj: bytes, algo: int, algo2: int,
+                      timestamp: int, part_name: str, fw_ver: str, prod_code: str) -> bytes:
+    """Create RBL header"""
+    header = b""
+    header += struct.pack("4s", b"RBL\x00")
+    header += struct.pack("<H", algo)
+    header += struct.pack("<H", algo2)
+    header += struct.pack("<I", timestamp)
 
-def create_firmware_header(new_fw_obj, patch_obj, algo, algo2, timestamp, part_name_str, fw_ver_str, prod_code_str):
+    header += struct.pack("16s", part_name.encode("utf-8"))
+    header += struct.pack("24s", fw_ver.encode("utf-8"))
+    header += struct.pack("24s", prod_code.encode("utf-8"))
+
+    # raw_fw 必须有值
+    header += struct.pack("<I", crc32(pkg_obj))        # pkg_crc
+    header += struct.pack("<I", crc32(raw_fw))         # raw_crc
+    header += struct.pack("<I", len(raw_fw))           # raw_size
+    header += struct.pack("<I", len(pkg_obj))          # pkg_size
+
+    hdr_crc = crc32(header)
+    header += struct.pack("<I", hdr_crc)
+    return header
+
+def parse_algo_strict(opt_name: str, value: str, table: dict) -> int:
     """
-    根据 fw_info_t 结构创建固件头部
-    :param new_fw_obj: 新版本固件的完整数据 (用于 raw_size 和 raw_crc)
-    :param patch_obj:  补丁文件的数据 (包的主体, 用于 pkg_size 和 pkg_crc)
+    Strict parse: value must exactly match one of table keys (case-insensitive).
+    Otherwise exit with error.
     """
-    # u8 type[4];
-    type_name = b'RBL\x00'
-    type_4 = struct.pack('4s', type_name)
-    # u16 algo; u16 algo2;
-    algo_pack = struct.pack('<H', algo)
-    algo2_pack = struct.pack('<H', algo2)
-    # u32 time_stamp;
-    time_stamp_pack = struct.pack('<I', int(timestamp))
-    # u8 part_name[16];
-    part_name = struct.pack('16s', part_name_str.encode('utf-8'))
-    # u8 fw_ver[24];
-    fw_ver = struct.pack('24s', fw_ver_str.encode('utf-8'))
-    # u8 prod_code[24];
-    prod_code = struct.pack('24s', prod_code_str.encode('utf-8'))
-    
-    # u32 pkg_crc; -> 使用补丁文件计算
-    pkg_crc_pack = struct.pack('<I', crc32(patch_obj))
-    # u32 raw_crc; -> 使用新版本文件计算
-    raw_crc_pack = struct.pack('<I', crc32(new_fw_obj))
-    # u32 raw_size; -> 使用新版本文件计算
-    raw_size_pack = struct.pack('<I', len(new_fw_obj))
-    # u32 pkg_size; -> 使用补丁文件计算
-    pkg_size_pack = struct.pack('<I', len(patch_obj))
+    if value is None:
+        # 一般不会发生（argparse 会给 default），留作兜底
+        return 0
 
-    # 组装除头部CRC外的所有字段
-    header_no_crc = (type_4 + algo_pack + algo2_pack + time_stamp_pack +
-                     part_name + fw_ver + prod_code +
-                     pkg_crc_pack + raw_crc_pack + raw_size_pack + pkg_size_pack)
-    # u32 hdr_crc;
-    hdr_crc_pack = struct.pack('<I', crc32(header_no_crc))
-    return header_no_crc + hdr_crc_pack
+    v = value.strip().lower()
+    if v not in table:
+        allowed = ", ".join(table.keys())
+        print(f"Error: invalid {opt_name} '{value}'. Allowed: {allowed}")
+        sys.exit(2)
+    return table[v]
 
-def package_patch(patch_file, new_file, output_file):
-    """为一个二进制补丁文件添加RBL头部"""
-    print(f"--- Packaging Patch File: '{patch_file}' ---")
-    
-    # 1. 读取新版本文件 (new_fw_obj) 以获取 raw_size 和 raw_crc
-    with open(new_file, "rb") as f:
-        new_fw_obj = f.read()
-    print(f"Read new file '{new_file}' for header info, size: {len(new_fw_obj)}")
 
-    # 2. 读取补丁文件 (patch_obj)，它将作为包的主体
-    with open(patch_file, "rb") as f:
-        patch_obj = f.read()
-    print(f"Read patch file (package body) '{patch_file}', size: {len(patch_obj)}")
+def package_rbl(args):
+    # -------- read pkg --------
+    with open(args.pkg, "rb") as f:
+        pkg_obj = f.read()
 
-    # 3. 创建头部
-    algo = QBOOT_ALGO_CMPRS_HPATCHLITE
-    algo2 = QBOOT_ALGO_CRYPT_NONE
-    timestamp = os.path.getmtime(patch_file)
+    # -------- read raw fw (required) --------
+    if not args.raw or not os.path.exists(args.raw):
+        print("Error: --raw is required and must exist")
+        sys.exit(1)
+    with open(args.raw, "rb") as f:
+        raw_fw = f.read()
 
-    my_head = create_firmware_header(
-        new_fw_obj=new_fw_obj,
-        patch_obj=patch_obj,
+    # -------- parse algo --------
+    crypt_algo = parse_algo_strict("--crypt", args.crypt, {
+        "none": QBOOT_ALGO_CRYPT_NONE,
+        "xor":  QBOOT_ALGO_CRYPT_XOR,
+        "aes":  QBOOT_ALGO_CRYPT_AES,
+    })
+
+    cmprs_algo = parse_algo_strict("--cmprs", args.cmprs, {
+        "none":       QBOOT_ALGO_CMPRS_NONE,
+        "gzip":       QBOOT_ALGO_CMPRS_GZIP,
+        "quicklz":    QBOOT_ALGO_CMPRS_QUICKLZ,
+        "fastlz":     QBOOT_ALGO_CMPRS_FASTLZ,
+        "hpatchlite": QBOOT_ALGO_CMPRS_HPATCHLITE,
+    })
+
+    algo = crypt_algo | cmprs_algo
+
+    # -------- parse algo2 (configurable) --------
+    algo2 = parse_algo_strict("--algo2", args.algo2, {
+        "none": QBOOT_ALGO2_VERIFY_NONE,
+        "crc":  QBOOT_ALGO2_VERIFY_CRC,
+    })
+
+    # -------- rule: hpatchlite => algo2 must be NONE --------
+    if cmprs_algo == QBOOT_ALGO_CMPRS_HPATCHLITE:
+        algo2 = QBOOT_ALGO2_VERIFY_NONE
+
+    # -------- create header --------
+    header = create_rbl_header(
+        raw_fw=raw_fw,
+        pkg_obj=pkg_obj,
         algo=algo,
         algo2=algo2,
-        timestamp=timestamp,
-        part_name_str='app',
-        fw_ver_str='v1.00',
-        prod_code_str='00010203040506070809'
+        timestamp=int(time.time()),
+        part_name=args.part,
+        fw_ver=args.version,
+        prod_code=args.product,
     )
-    print(f"Generated header size: {len(my_head)}")
-    
-    # 4. 写入最终文件 (头部 + 原始补丁数据)
-    with open(output_file, "wb") as f:
-        f.write(my_head)
-        f.write(patch_obj)
-    print(f"Successfully created RBL patch package: '{output_file}'")
 
+    # -------- write output --------
+    with open(args.output, "wb") as f:
+        f.write(header)
+        f.write(pkg_obj)
+
+    print(
+        f"RBL package created: {args.output} | pkg: {len(pkg_obj)} bytes | "
+        f"raw: {len(raw_fw)} bytes | algo=0x{algo:04X} | algo2=0x{algo2:04X}"
+    )
+
+def main():
+    parser = argparse.ArgumentParser(description="RBL header packager (raw required)")
+    parser.add_argument("--pkg", required=True, help="Prepared package body")
+    parser.add_argument("--raw", required=True, help="Raw firmware (required)")
+    parser.add_argument("-o", "--output", required=True, help="Output RBL file")
+    parser.add_argument("--crypt", default="none", help="Crypt algo: none, xor, aes")
+    parser.add_argument("--cmprs", default="none", help="Compress algo: none, gzip, quicklz, fastlz, hpatchlite")
+    parser.add_argument("--algo2", default="crc", help="Verify algo2: none, crc")
+    parser.add_argument("--part", default="app", help="Partition name")
+    parser.add_argument("--version", default="v1.00", help="Firmware version")
+    parser.add_argument("--product", default="00010203040506070809", help="Product code")
+    args = parser.parse_args()
+    package_rbl(args)
 
 if __name__ == "__main__":
-    # 检查命令行参数数量
-    if len(sys.argv) < 3 or len(sys.argv) > 4:
-        print(f"\nUsage: python {os.path.basename(sys.argv[0])} <patch_file> <new_file> [output_file]")
-        print("\n  <patch_file>: The binary patch data (e.g., from hdiffi).")
-        print("  <new_file>:   The new version file, used for header metadata (raw_size, raw_crc).")
-        sys.exit(1)
-
-    # 获取输入文件
-    patch_file = sys.argv[1]
-    new_file = sys.argv[2]
-    
-    if not os.path.exists(patch_file):
-        print(f"Error: Patch file not found at '{patch_file}'")
-        sys.exit(1)
-    if not os.path.exists(new_file):
-        print(f"Error: New file not found at '{new_file}'")
-        sys.exit(1)
-        
-    # 决定输出文件
-    if len(sys.argv) == 4:
-        output_file = sys.argv[3]
-    else:
-        # 默认输出文件名 (e.g., light_patch.bin -> light_patch.rbl)
-        base_name = os.path.splitext(patch_file)[0]
-        output_file = f"{base_name}.rbl"
-        
-    # 执行打包
-    package_patch(patch_file, new_file, output_file)
+    main()

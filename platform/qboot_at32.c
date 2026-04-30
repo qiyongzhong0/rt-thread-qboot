@@ -1,5 +1,5 @@
 /*
- * qboot_n32.c
+ * qboot_stm32.c
  *
  * Change Logs:
  * Date           Author            Notes
@@ -8,12 +8,15 @@
 
 #include <board.h>
 
-#ifdef CHIP_FAMILY_N32
+#ifdef CHIP_FAMILY_AT32
 
 #include <rtthread.h>
 #include <rtdevice.h>
 #include <qboot.h>
-#include <n32g45x_conf.h>
+
+#ifdef CHIP_NAME_AT32F403AVGT7
+#include <at32f403a_407.h>
+#endif
 
 //#define QBOOT_APP_RUN_IN_QSPI_FLASH
 //#define QBOOT_DEBUG
@@ -55,24 +58,35 @@ rt_weak void qbt_jump_to_app(void)
 
 static void qbt_reset_periph(void)
 {
-    RCC->AHBPRST  = 0xFFFFFFFF;
-    RCC->AHBPRST  = 0x00000000;
+#if (defined(AT32F403Axx) || defined(AT32F407xx))
+    CRM->ahbrst  = 0xFFFFFFFF;
+    CRM->ahbrst  = 0x00000000;
+
+    CRM->apb1rst = 0xFFFFFFFF;
+    CRM->apb1rst = 0x00000000;
+
+    CRM->apb2rst = 0xFFFFFFFF;
+    CRM->apb2rst = 0x00000000;
+#else
+    RCC->AHBRST  = 0xFFFFFFFF;
+    RCC->AHBRST  = 0x00000000;
     
-    RCC->APB2PRST = 0xFFFFFFFF;
-    RCC->APB2PRST = 0x00000000;
+    RCC->APB1RST = 0xFFFFFFFF;
+    RCC->APB1RST = 0x00000000;
     
-    RCC->APB1PRST = 0xFFFFFFFF;
-    RCC->APB1PRST = 0x00000000;
+    RCC->APB2RST = 0xFFFFFFFF;
+    RCC->APB2RST = 0x00000000;
+#endif
 }
 
-rt_weak void qbt_jump_to_app(void)
+void qbt_jump_to_app(void)
 {
     typedef void (*app_func_t)(void);
-    u32 app_addr = QBOOT_APP_ADDR;
-    u32 stk_addr = *((__IO uint32_t *)app_addr);
-    app_func_t app_func = (app_func_t)(*((__IO uint32_t *)(app_addr + 4)));
+    rt_uint32_t app_addr = QBOOT_APP_ADDR;
+    rt_uint32_t stk_addr = *((volatile uint32_t *)app_addr);
+    app_func_t app_func = (app_func_t)(*((volatile uint32_t *)(app_addr + 4)));
 
-    if ((((u32)app_func & 0xff000000) != 0x08000000) || ((stk_addr & 0x2ff00000) != 0x20000000))
+    if ((((rt_uint32_t)app_func & 0xff000000) != 0x08000000) || ((stk_addr & 0x2ff00000) != 0x20000000))
     {
         LOG_E("No legitimate application.");
         return;
@@ -93,8 +107,12 @@ rt_weak void qbt_jump_to_app(void)
     SysTick->CTRL = 0;
     SysTick->LOAD = 0;
     SysTick->VAL = 0;
-    
-    RCC_DeInit();
+
+    #if (defined(AT32F403Axx) || defined(AT32F407xx))
+    crm_reset();
+    #else
+    RCC_Reset();
+    #endif
     
     __set_CONTROL(0);
     __set_MSP(stk_addr);

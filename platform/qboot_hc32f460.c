@@ -1,5 +1,5 @@
 /*
- * qboot_stm32.c
+ * qboot_hc32f460.c
  *
  * Change Logs:
  * Date           Author            Notes
@@ -8,15 +8,13 @@
 
 #include <board.h>
 
-#ifdef CHIP_FAMILY_AT32
+#ifdef CHIP_FAMILY_HC32
 
 #include <rtthread.h>
 #include <rtdevice.h>
 #include <qboot.h>
-
-#ifdef CHIP_NAME_AT32F403AVGT7
-#include <at32f403a_407.h>
-#endif
+#include <hc32f460.h>
+#include "hc32_ll.h"
 
 //#define QBOOT_APP_RUN_IN_QSPI_FLASH
 //#define QBOOT_DEBUG
@@ -58,35 +56,29 @@ rt_weak void qbt_jump_to_app(void)
 
 static void qbt_reset_periph(void)
 {
-#if (defined(AT32F403Axx) || defined(AT32F407xx))
-    CRM->ahbrst  = 0xFFFFFFFF;
-    CRM->ahbrst  = 0x00000000;
+    #define DEFAULT_FCG0                        (0xFFFFFAEEul)
+    #define DEFAULT_FCG1                        (0xFFFFFFFFul)
+    #define DEFAULT_FCG2                        (0xFFFFFFFFul)
+    #define DEFAULT_FCG3                        (0xFFFFFFFFul)
 
-    CRM->apb1rst = 0xFFFFFFFF;
-    CRM->apb1rst = 0x00000000;
+    PWC_FCG0_REG_Unlock();
 
-    CRM->apb2rst = 0xFFFFFFFF;
-    CRM->apb2rst = 0x00000000;
-#else
-    RCC->AHBRST  = 0xFFFFFFFF;
-    RCC->AHBRST  = 0x00000000;
-    
-    RCC->APB1RST = 0xFFFFFFFF;
-    RCC->APB1RST = 0x00000000;
-    
-    RCC->APB2RST = 0xFFFFFFFF;
-    RCC->APB2RST = 0x00000000;
-#endif
+    CM_PWC->FCG0 = DEFAULT_FCG0;
+    CM_PWC->FCG1 = DEFAULT_FCG1;
+    CM_PWC->FCG2 = DEFAULT_FCG2;
+    CM_PWC->FCG3 = DEFAULT_FCG3;
+
+    PWC_FCG0_REG_Lock();
 }
 
 rt_weak void qbt_jump_to_app(void)
 {
     typedef void (*app_func_t)(void);
-    u32 app_addr = QBOOT_APP_ADDR;
-    u32 stk_addr = *((volatile uint32_t *)app_addr);
-    app_func_t app_func = (app_func_t)(*((volatile uint32_t *)(app_addr + 4)));
+    rt_uint32_t app_addr = QBOOT_APP_ADDR;
+    rt_uint32_t stk_addr = *((__IO uint32_t *)app_addr);
+    app_func_t app_func = (app_func_t)(*((__IO uint32_t *)(app_addr + 4)));
 
-    if ((((u32)app_func & 0xff000000) != 0x08000000) || ((stk_addr & 0x2ff00000) != 0x20000000))
+    if ((((rt_uint32_t)app_func & 0xff000000) != 0x00000000) || (((stk_addr+0x00010000) & 0x2ff00000) != 0x20000000))
     {
         LOG_E("No legitimate application.");
         return;
@@ -100,19 +92,20 @@ rt_weak void qbt_jump_to_app(void)
 
     for(int i=0; i<128; i++)
     {
-        __NVIC_DisableIRQ(i);
-        __NVIC_ClearPendingIRQ(i);
+        NVIC_DisableIRQ(i);
+        NVIC_ClearPendingIRQ(i);
+        //enIrqResign(i);
     }
     
     SysTick->CTRL = 0;
     SysTick->LOAD = 0;
     SysTick->VAL = 0;
-
-    #if (defined(AT32F403Axx) || defined(AT32F407xx))
-    crm_reset();
-    #else
-    RCC_Reset();
-    #endif
+    
+    CLK_MrcCmd(ENABLE);
+    CLK_SetSysClockSrc(CLK_SYSCLK_SRC_MRC);
+    EFM_FWMC_Cmd(ENABLE);
+    EFM_SetWaitCycle(EFM_WAIT_CYCLE0);
+    EFM_FWMC_Cmd(DISABLE);
     
     __set_CONTROL(0);
     __set_MSP(stk_addr);

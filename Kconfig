@@ -1,0 +1,568 @@
+# Kconfig file for package qboot
+
+menuconfig PKG_USING_QBOOT
+    bool "qboot : A component used to make bootloader quickly"
+    select PKG_USING_CRCLIB
+    default n
+
+if PKG_USING_QBOOT
+
+    config PKG_QBOOT_PATH
+        string
+        default "/packages/system/qboot"
+
+    config QBOOT_USING_PRODUCT_CODE
+        bool "using product code"
+        default n
+
+    if QBOOT_USING_PRODUCT_CODE
+        config QBOOT_PRODUCT_CODE
+            string "product code, maximum 20 characters"
+            default "00010203040506070809"
+    endif
+
+    menu "Package storage backends"
+
+        config QBOOT_PKG_SOURCE_FAL
+            bool "Enable FAL backend"
+            select PKG_USING_FAL if RT_VER_NUM < 0x40100
+            select RT_USING_FAL if RT_VER_NUM >= 0x40100
+            default y
+            help
+                Enable FAL partition access for package/target storage.
+
+        config QBOOT_PKG_SOURCE_FS
+            bool "Enable filesystem backend (experimental)"
+            depends on RT_USING_DFS
+            default n
+            help
+                Enable filesystem access for package storage.
+
+        config QBOOT_PKG_SOURCE_CUSTOM
+            bool "Enable custom flash backend"
+            default n
+            help
+                Enable user-provided flash backend with address/length config.
+
+        menu "APP storage"
+            choice
+                prompt "APP storage backend"
+                depends on QBOOT_PKG_SOURCE_FAL || QBOOT_PKG_SOURCE_FS || QBOOT_PKG_SOURCE_CUSTOM
+                default QBOOT_APP_STORE_FAL if QBOOT_PKG_SOURCE_FAL
+                default QBOOT_APP_STORE_FS if !QBOOT_PKG_SOURCE_FAL && QBOOT_PKG_SOURCE_FS
+                default QBOOT_APP_STORE_CUSTOM if !QBOOT_PKG_SOURCE_FAL && !QBOOT_PKG_SOURCE_FS && QBOOT_PKG_SOURCE_CUSTOM
+                help
+                    Select backend for application firmware storage.
+
+                config QBOOT_APP_STORE_FAL
+                    bool "FAL partition"
+                    depends on QBOOT_PKG_SOURCE_FAL
+                    help
+                        Use a FAL partition for the application firmware.
+
+                config QBOOT_APP_STORE_FS
+                    bool "Filesystem file"
+                    depends on QBOOT_PKG_SOURCE_FS
+                    help
+                        Use a filesystem file for the application firmware.
+
+                config QBOOT_APP_STORE_CUSTOM
+                    bool "Custom flash region"
+                    depends on QBOOT_PKG_SOURCE_CUSTOM
+                    help
+                        Use a custom flash region for the application firmware.
+            endchoice
+
+            if QBOOT_APP_STORE_FAL
+                config QBOOT_APP_FAL_PART_NAME
+                    string "application partition name"
+                    default "app"
+                    help
+                        FAL partition name for application firmware.
+            endif
+
+            if QBOOT_APP_STORE_FS
+                config QBOOT_APP_FILE_PATH
+                    string "application file path"
+                    default "/app.rbl"
+                    help
+                        Filesystem path for application firmware.
+
+                config QBOOT_APP_SIGN_FILE_PATH
+                    string "application sign file path"
+                    default "/app.rbl.sign"
+                    help
+                        Filesystem path for the application release sign marker.
+            endif
+
+            if QBOOT_APP_STORE_CUSTOM
+                config QBOOT_APP_FLASH_ADDR
+                    hex "application flash address"
+                    default 0x00000000
+                    help
+                        Base address of application firmware region.
+
+                config QBOOT_APP_FLASH_LEN
+                    hex "application flash length"
+                    default 0x00000000
+                    help
+                        Length of application firmware region.
+            endif
+        endmenu
+
+        menu "Download package storage"
+            choice
+                prompt "Download package backend"
+                depends on QBOOT_PKG_SOURCE_FAL || QBOOT_PKG_SOURCE_FS || QBOOT_PKG_SOURCE_CUSTOM
+                default QBOOT_DOWNLOAD_STORE_FAL if QBOOT_PKG_SOURCE_FAL
+                default QBOOT_DOWNLOAD_STORE_FS if !QBOOT_PKG_SOURCE_FAL && QBOOT_PKG_SOURCE_FS
+                default QBOOT_DOWNLOAD_STORE_CUSTOM if !QBOOT_PKG_SOURCE_FAL && !QBOOT_PKG_SOURCE_FS && QBOOT_PKG_SOURCE_CUSTOM
+                help
+                    Select backend for the download package.
+
+                config QBOOT_DOWNLOAD_STORE_FAL
+                    bool "FAL partition"
+                    depends on QBOOT_PKG_SOURCE_FAL
+                    help
+                        Use a FAL partition for the download package.
+
+                config QBOOT_DOWNLOAD_STORE_FS
+                    bool "Filesystem file"
+                    depends on QBOOT_PKG_SOURCE_FS
+                    help
+                        Use a filesystem file for the download package.
+
+                config QBOOT_DOWNLOAD_STORE_CUSTOM
+                    bool "Custom flash region"
+                    depends on QBOOT_PKG_SOURCE_CUSTOM
+                    help
+                        Use a custom flash region for the download package.
+            endchoice
+
+            if QBOOT_DOWNLOAD_STORE_FAL
+                config QBOOT_DOWNLOAD_FAL_PART_NAME
+                    string "download partition name"
+                    default "download"
+                    help
+                        FAL partition name for downloaded package.
+            endif
+
+            if QBOOT_DOWNLOAD_STORE_FS
+                config QBOOT_DOWNLOAD_FILE_PATH
+                    string "download file path"
+                    default "/download.rbl"
+                    help
+                        Filesystem path for downloaded package.
+
+                config QBOOT_DOWNLOAD_SIGN_FILE_PATH
+                    string "download sign file path"
+                    default "/download.rbl.sign"
+                    help
+                        Filesystem path for the download release sign marker.
+            endif
+
+            if QBOOT_DOWNLOAD_STORE_CUSTOM
+                config QBOOT_DOWNLOAD_FLASH_ADDR
+                    hex "download flash address"
+                    default 0x00000000
+                    help
+                        Base address of download package region.
+
+                config QBOOT_DOWNLOAD_FLASH_LEN
+                    hex "download flash length"
+                    default 0x00000000
+                    help
+                        Length of download package region.
+            endif
+        endmenu
+
+        menu "Factory storage"
+            choice
+                prompt "Factory storage backend"
+                depends on QBOOT_PKG_SOURCE_FAL || QBOOT_PKG_SOURCE_FS || QBOOT_PKG_SOURCE_CUSTOM
+                default QBOOT_FACTORY_STORE_FAL if QBOOT_PKG_SOURCE_FAL
+                default QBOOT_FACTORY_STORE_FS if !QBOOT_PKG_SOURCE_FAL && QBOOT_PKG_SOURCE_FS
+                default QBOOT_FACTORY_STORE_CUSTOM if !QBOOT_PKG_SOURCE_FAL && !QBOOT_PKG_SOURCE_FS && QBOOT_PKG_SOURCE_CUSTOM
+                help
+                    Select backend for factory firmware storage.
+
+                config QBOOT_FACTORY_STORE_FAL
+                    bool "FAL partition"
+                    depends on QBOOT_PKG_SOURCE_FAL
+                    help
+                        Use a FAL partition for factory firmware.
+
+                config QBOOT_FACTORY_STORE_FS
+                    bool "Filesystem file"
+                    depends on QBOOT_PKG_SOURCE_FS
+                    help
+                        Use a filesystem file for factory firmware.
+
+                config QBOOT_FACTORY_STORE_CUSTOM
+                    bool "Custom flash region"
+                    depends on QBOOT_PKG_SOURCE_CUSTOM
+                    help
+                        Use a custom flash region for factory firmware.
+            endchoice
+
+            if QBOOT_FACTORY_STORE_FAL
+                config QBOOT_FACTORY_FAL_PART_NAME
+                    string "factory partition name"
+                    default "factory"
+                    help
+                        FAL partition name for factory firmware.
+            endif
+
+            if QBOOT_FACTORY_STORE_FS
+                config QBOOT_FACTORY_FILE_PATH
+                    string "factory file path"
+                    default "/factory.rbl"
+                    help
+                        Filesystem path for factory firmware.
+            endif
+
+            if QBOOT_FACTORY_STORE_CUSTOM
+                config QBOOT_FACTORY_FLASH_ADDR
+                    hex "factory flash address"
+                    default 0x00000000
+                    help
+                        Base address of factory firmware region.
+
+                config QBOOT_FACTORY_FLASH_LEN
+                    hex "factory flash length"
+                    default 0x00000000
+                    help
+                        Length of factory firmware region.
+            endif
+        endmenu
+
+        if QBOOT_PKG_SOURCE_CUSTOM
+            config QBOOT_FLASH_ERASE_ALIGN
+                int "flash erase alignment"
+                default 4096
+                help
+                    Erase alignment/sector size for custom flash backend.
+        endif
+
+    endmenu
+
+    config QBOOT_USING_AES
+        bool "using AES decrypt"
+        select PKG_USING_TINYCRYPT
+        select TINY_CRYPT_AES
+        default n
+
+    if QBOOT_USING_AES
+        config QBOOT_AES_IV
+            string "AES initialization vector, 16 characters"
+            default "0123456789ABCDEF"
+
+        config QBOOT_AES_KEY
+            string "AES round keys, 32 characters"
+            default "0123456789ABCDEF0123456789ABCDEF"
+    endif
+
+    config QBOOT_USING_GZIP
+        bool "using gzip decompress"
+        select PKG_USING_ZLIB
+        default n
+
+    config QBOOT_USING_QUICKLZ
+        bool "using quicklz decompress"
+        select PKG_USING_QUICKLZ
+        default y
+
+    config QBOOT_USING_FASTLZ
+        bool "using fastlz decompress"
+        select PKG_USING_FASTLZ
+        default n
+
+    config QBOOT_USING_HPATCHLITE
+        bool "using hpatch-lite decompress"
+        select PKG_USING_HPATCHLITE
+        default n
+        help
+            Enable HPatchLite in-place diff update.
+
+        if QBOOT_USING_HPATCHLITE
+            config QBOOT_HPATCH_PATCH_CACHE_SIZE
+                int "Patch cache size for HPatchLite"
+                default 4096
+                help
+                    Specifies the size of the internal cache used by the HPatchLite patch algorithm.
+                    This buffer is used for holding temporary data during the patch process.
+                    A larger size might slightly improve performance for certain patch types, 
+                    but 4096 is generally a safe and efficient value.
+
+            config QBOOT_HPATCH_DECOMPRESS_CACHE_SIZE
+                int "Decompress cache size for HPatchLite"
+                default 4096
+                help
+                    Specifies the size of the cache used for holding decompressed data.
+                    This buffer acts as a bridge between the decompressor and the patch algorithm.
+                    A larger size can reduce the number of I/O operations. 4096 is a common value.
+            choice
+                prompt "HPatchLite In-Place Update Strategy"
+                default QBOOT_HPATCH_USE_STORAGE_SWAP
+                help
+                    Select the buffer strategy for in-place firmware updates.
+                    - FLASH SWAP: Uses a dedicated flash partition as a buffer. Slower but saves RAM.
+                    - RAM BUFFER: Uses RAM as a buffer. Faster but consumes significant RAM.
+
+                config QBOOT_HPATCH_USE_STORAGE_SWAP
+                    bool "Use a storage medium as swap buffer"
+                    depends on QBOOT_PKG_SOURCE_FAL || QBOOT_PKG_SOURCE_CUSTOM || QBOOT_PKG_SOURCE_FS
+                    help
+                        Use a flash swap region via FAL or custom backend.
+
+                config QBOOT_HPATCH_USE_RAM_BUFFER
+                    bool "Use a RAM buffer (Faster, consumes RAM)"
+            endchoice
+
+            if QBOOT_HPATCH_USE_STORAGE_SWAP
+                choice
+                    prompt "HPatchLite swap backend"
+                    depends on QBOOT_PKG_SOURCE_FAL || QBOOT_PKG_SOURCE_CUSTOM || QBOOT_PKG_SOURCE_FS
+                    default QBOOT_HPATCH_SWAP_STORE_FAL if QBOOT_PKG_SOURCE_FAL
+                    default QBOOT_HPATCH_SWAP_STORE_CUSTOM if !QBOOT_PKG_SOURCE_FAL && QBOOT_PKG_SOURCE_CUSTOM
+                    default QBOOT_HPATCH_SWAP_STORE_FS if !QBOOT_PKG_SOURCE_FAL && !QBOOT_PKG_SOURCE_CUSTOM && QBOOT_PKG_SOURCE_FS
+                    help
+                        Select backend for the swap buffer.
+
+                    config QBOOT_HPATCH_SWAP_STORE_FAL
+                        bool "FAL partition"
+                        depends on QBOOT_PKG_SOURCE_FAL
+                        help
+                            Use a FAL partition as the swap buffer.
+
+                    config QBOOT_HPATCH_SWAP_STORE_CUSTOM
+                        bool "Custom flash region"
+                        depends on QBOOT_PKG_SOURCE_CUSTOM
+                        help
+                            Use a custom flash region as the swap buffer.
+
+                    config QBOOT_HPATCH_SWAP_STORE_FS
+                        bool "Filesystem file"
+                        depends on QBOOT_PKG_SOURCE_FS
+                        help
+                            Use a filesystem file as the swap buffer.
+                endchoice
+
+                if QBOOT_HPATCH_SWAP_STORE_FAL
+                    config QBOOT_HPATCH_SWAP_PART_NAME
+                        string "Swap partition name for HPatchLite"
+                        default "swap"
+                endif
+
+                if QBOOT_HPATCH_SWAP_STORE_CUSTOM
+                    config QBOOT_HPATCH_SWAP_FLASH_ADDR
+                        hex "Swap flash address for HPatchLite"
+                        default 0x00000000
+
+                    config QBOOT_HPATCH_SWAP_FLASH_LEN
+                        hex "Swap flash length for HPatchLite"
+                        default 0x00000000
+                endif
+
+                if QBOOT_HPATCH_SWAP_STORE_FS
+                    config QBOOT_HPATCH_SWAP_FILE_PATH
+                        string "Swap file path for HPatchLite"
+                        default "/hpatch.swap"
+
+                    config QBOOT_HPATCH_SWAP_FILE_SIZE
+                        int "Swap file size for HPatchLite"
+                        default 524288
+                        help
+                            Size of the swap file used as buffer when filesystem backend is selected.
+                            Must be >= the erase alignment size of the target (app) partition.
+                endif
+
+                config QBOOT_HPATCH_SWAP_OFFSET
+                    int "Offset within the swap region to use as a buffer"
+                    default 0
+                    help
+                        Specify the starting offset within the swap region. 
+                        This allows only a portion of the swap region to be used as a buffer. 
+                        Note that it is defined according to the sector erase granularity.
+
+                config QBOOT_HPATCH_COPY_BUFFER_SIZE
+                    int "RAM buffer size for flash-to-flash copy operations"
+                    default 4096
+                    help
+                        Size of the temporary RAM buffer used for copying data between flash partitions.
+                        A larger size may improve copy speed but consumes more RAM.
+            endif
+
+            if QBOOT_HPATCH_USE_RAM_BUFFER
+                config QBOOT_HPATCH_RAM_BUFFER_SIZE
+                    int "RAM buffer size for HPatchLite (must be >= sector size)"
+                    default 4096
+            endif
+        endif
+
+    config QBOOT_USING_SHELL
+        bool "using shell command of qboot"
+        default y
+        select RT_USING_MSH
+
+    if QBOOT_USING_SHELL
+        config QBOOT_SHELL_KEY_CHK_TMO
+            int "check timeout the [enter] key pressed, unit : s"
+            default 5
+    endif
+
+    config QBOOT_USING_SYSWATCH
+        bool "using syswatch component"
+        select PKG_USING_SYSWATCH
+        default y
+        help
+            Enable system watchdog component.
+
+    config QBOOT_USING_OTA_DOWNLOADER
+        bool "using OTA_download component"
+        select PKG_USING_OTA_DOWNLOADER
+        select PKG_USING_YMODEM_OTA
+        default y
+
+    config QBOOT_USING_UPDATE_MGR
+        bool "use update manager to handle download flow"
+        default n
+        help
+            Let qboot manage download wait/timeout and fallback behavior.
+
+    if QBOOT_USING_UPDATE_MGR
+        config QBOOT_POLL_DELAY_MS
+            int "update manager poll delay (ms)"
+            default 20
+
+        config QBT_UPDATE_MGR_PROGRESS_ENABLE
+            bool "enable update manager progress log"
+            default y
+            help
+                Enable update manager progress statistics.
+
+        config QBT_UPDATE_MGR_PROGRESS_PRINT_ENABLE
+            bool "enable update manager progress rt_kprintf output"
+            depends on QBT_UPDATE_MGR_PROGRESS_ENABLE
+            default n
+            help
+                Control rt_kprintf output for update progress display.
+                Enabling this may impact real-time performance when
+                RT_USING_THREADSAFE_PRINTF is disabled or when logging
+                is not using asynchronous ULog.
+
+        config QBOOT_UPDATE_MGR_USE_DOWNLOAD_HELPER
+            bool "use update manager download/sign helper"
+            default y
+    endif
+
+    config QBOOT_USING_PRODUCT_INFO
+        bool "using product infomation print"
+        default y
+
+    if QBOOT_USING_PRODUCT_INFO
+        config QBOOT_PRODUCT_NAME
+            string "product name"
+            default "Qboot test device"
+
+        config QBOOT_PRODUCT_VER
+            string "product version"
+            default "v1.00 2020.07.27"
+
+        config QBOOT_PRODUCT_MCU
+            string "product MCU chip model"
+            default "stm32l4r5zi"
+    endif
+
+    config QBOOT_USING_STATUS_LED
+        bool "using running status led"
+        select PKG_USING_QLED
+        default y
+
+    if QBOOT_USING_STATUS_LED
+        config QBOOT_STATUS_LED_PIN
+            int "running status led pin"
+            range 0 176
+            default 0
+
+        config QBOOT_STATUS_LED_LEVEL
+            int "led on level"
+            range 0 1
+            default 1
+    endif
+
+    config QBOOT_USING_FACTORY_KEY
+        bool "using resume factory key"
+        default n
+
+    if QBOOT_USING_FACTORY_KEY
+        config QBOOT_FACTORY_KEY_PIN
+            int "resume factory key pin"
+            range 0 176
+            default 1
+
+        config QBOOT_FACTORY_KEY_LEVEL
+            int "the level after key is pressed"
+            range 0 1
+            default 0
+
+        config QBOOT_FACTORY_KEY_CHK_TMO
+            int "timeout when the key is pressed continuously, unit : s"
+            default 10
+    endif
+
+    config QBOOT_APP_RUN_IN_QSPI_FLASH
+        bool "appl run in external flash"
+        default n
+
+    config QBOOT_THREAD_STACK_SIZE
+        int "The stack size of thread"
+        default 4096
+
+    config QBOOT_THREAD_PRIO
+        int "The priority of thread"
+        default 5
+
+    choice
+        prompt "Version"
+        default PKG_USING_QBOOT_LATEST_VERSION
+        help
+            Select the package version
+
+        config PKG_USING_QBOOT_LATEST_VERSION
+            bool "latest"
+
+        config PKG_USING_QBOOT_V106
+            bool "v1.06"
+
+        config PKG_USING_QBOOT_V105
+            bool "v1.05"
+
+        config PKG_USING_QBOOT_V104
+            bool "v1.04"
+
+        config PKG_USING_QBOOT_V103
+            bool "v1.03"
+
+        config PKG_USING_QBOOT_V102
+            bool "v1.02"
+
+        config PKG_USING_QBOOT_V101
+            bool "v1.01"
+
+        config PKG_USING_QBOOT_V100
+            bool "v1.00"
+    endchoice
+
+    config PKG_QBOOT_VER
+       string
+       default "latest" if PKG_USING_QBOOT_LATEST_VERSION
+       default "v1.06" if PKG_USING_QBOOT_V106
+       default "v1.05" if PKG_USING_QBOOT_V105
+       default "v1.04" if PKG_USING_QBOOT_V104
+       default "v1.03" if PKG_USING_QBOOT_V103
+       default "v1.02" if PKG_USING_QBOOT_V102
+       default "v1.01" if PKG_USING_QBOOT_V101
+       default "v1.00" if PKG_USING_QBOOT_V100
+
+endif

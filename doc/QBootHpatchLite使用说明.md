@@ -1,152 +1,263 @@
-ï»¿# QBootä½¿ç”¨æŒ‡å¯¼ â€”â€” é›†æˆHPatchLiteå®ç°å·®åˆ†å‡çº§
+# QBootÊ¹ÓÃÖ¸µ¼ ¡ª¡ª ¼¯³ÉHPatchLiteÊµÏÖ²î·ÖÉı¼¶£¨Ô­µØ¸üĞÂ In-place OTA£©
 
-## 1. åŠŸèƒ½ç®€ä»‹
+## 1. ¹¦ÄÜ¼ò½é
 
-æœ¬æ–‡æ¡£æ˜¯åœ¨ **ã€ŠQBootä½¿ç”¨æŒ‡å¯¼ã€‹** çš„åŸºç¡€ä¸Šï¼Œä¸“é—¨é’ˆå¯¹å¦‚ä½•é›†æˆå’Œä½¿ç”¨ `HPatchLite` ç»„ä»¶å®ç°**å·®åˆ†å‡çº§ï¼ˆFOTAï¼‰**åŠŸèƒ½çš„è¯¦ç»†è¯´æ˜ã€‚
+±¾ÎÄµµÔÚ¡¶QBootÊ¹ÓÃÖ¸µ¼¡·µÄ»ù´¡ÉÏ£¬ËµÃ÷ÈçºÎ¼¯³ÉÓëÊ¹ÓÃ **HPatchLite** ÊµÏÖ**²î·ÖÉı¼¶£¨FOTA£©**¡£
 
-`HPatchLite` æ˜¯ä¸€ä¸ªé«˜æ€§èƒ½ã€èµ„æºå ç”¨æä½çš„äºŒè¿›åˆ¶å·®åˆ†åº“ï¼Œç‰¹åˆ«é€‚åˆåœ¨èµ„æºå—é™çš„åµŒå…¥å¼è®¾å¤‡ä¸Šæ‰§è¡Œå›ºä»¶çš„å¢é‡æ›´æ–°ã€‚é€šè¿‡å°† `HPatchLite` ä¸ `QBoot` ç»“åˆï¼Œæ‚¨å¯ä»¥æ˜¾è‘—å‡å°OTAå‡çº§åŒ…çš„ä½“ç§¯ï¼ŒèŠ‚çœæµé‡å’ŒFlashç©ºé—´ã€‚
+±¾ÊµÏÖÎª**Ô­µØ¸üĞÂ£¨in-place£©**£º¾É¹Ì¼şËùÔÚ·ÖÇø£¨old/app£©»á±»Ö±½Ó¸²¸ÇÎªĞÂ¹Ì¼ş¡£Îª½â¾ö¡°Í¬Ò»·ÖÇø¶Á¾ÉÊı¾İ + Ğ´ĞÂÊı¾İ¡±µÄ³åÍ»£¬Ìá¹©Á½ÖÖ»º³å²ßÂÔ£¬²¢Í¨¹ı Kconfig ¶şÑ¡Ò»ÅäÖÃ£º
 
-æœ¬åŠŸèƒ½ä¾èµ– `QBoot`ã€`FAL`ã€`HPatchLite` ç»„ä»¶ååŒå·¥ä½œã€‚
+* **FLASH SWAP**£ºÊ¹ÓÃ¶ÀÁ¢´æ´¢ÇøÓò£¨·ÖÇø/ÎÄ¼ş/×Ô¶¨ÒåÇøÓò£©×÷ÎªÖÜ×ª»º³å£¬RAM Õ¼ÓÃĞ¡µ«ËÙ¶È½ÏÂı¡£
+* **RAM BUFFER**£ºÊ¹ÓÃ RAM ×÷ÎªÖÜ×ª»º³å£¬ËÙ¶È¿ìµ« RAM Õ¼ÓÃ½Ï´ó¡£
 
-## 2. å·®åˆ†å‡çº§åŒ…åˆ¶ä½œæµç¨‹
+ÊµÏÖÌØµã£º
 
-å·®åˆ†å‡çº§çš„æ ¸å¿ƒåœ¨äºåˆ¶ä½œä¸€ä¸ªåŒ…å«å›ºä»¶å·®å¼‚ä¿¡æ¯çš„â€œè¡¥ä¸åŒ…â€ã€‚æ•´ä¸ªæµç¨‹åˆ†ä¸ºä¸¤æ­¥ï¼š
+* Í³Ò»µÄ **swap »º³å¶ÔÏó `qbt_swap_t`**£º½øÈë patch Á÷³ÌÇ°Í³Ò»·ÖÅä `ram_buf`
 
-### 2.1 ç”ŸæˆåŸå§‹Patchæ–‡ä»¶
+  * FLASH SWAP£º`ram_buf` ÓÃ×÷ flash-to-flash ¿½±´µÄÁÙÊ±»º´æ
+  * RAM BUFFER£º`ram_buf` ÓÃ×÷Ö÷»º³åÇø
+* Í³Ò»µÄ¡°**Ğ´Èë swap -> swap ÂúÔò commit**¡±Á÷³Ì£º`_do_write_new()` ÄÚ²¿°´ÈİÁ¿·Ö¿éĞ´Èë£¬Âúºó `qbt_swap_commit()` Ìá½»µ½ old ·ÖÇø¡£
+* Ğ´ÈëÇ°°´²Á³ı¶ÔÆëÖ´ĞĞ **ÔöÁ¿²Á³ı**£º`qbt_erase_aligned_range()` Î¬»¤ `old_part_erased_end`£¬±ÜÃâÖØ¸´²Á³ıÓëÔ½½ç²Á³ı¡£
+* ¸üĞÂÍê³ÉºóÖ´ĞĞ**Î²²¿¶ÔÆë²Á³ı**£¨ĞÂ¹Ì¼ş±È·ÖÇøĞ¡£©£º±ÜÃâ²ĞÁô¾ÉÊı¾İÓ°ÏìĞ£Ñé/ÔËĞĞ¡£
+* ×îÖÕÒÔ `committed_len == newer_file_len` ×ö³¤¶ÈÒ»ÖÂĞÔ¼ì²é¡£
 
-è¿™ä¸€æ­¥éœ€è¦åœ¨è‡ªè¡Œä¸‹è½½å·¥å…·å®Œæˆï¼Œç”¨äºå¯¹æ¯”æ–°æ—§å›ºä»¶ï¼Œå¹¶ç”Ÿæˆæœ€åŸå§‹çš„å·®åˆ†æ•°æ®ã€‚
+---
 
-1.  **ä¸‹è½½å·¥å…·**:
-    ä»HPatchLiteçš„å®˜æ–¹GitHubä»“åº“ä¸‹è½½å…¶é¢„ç¼–è¯‘çš„äºŒè¿›åˆ¶å·¥å…·åŒ…ï¼š
+## 2. ²î·ÖÉı¼¶°üÖÆ×÷Á÷³Ì
+
+²î·ÖÉı¼¶µÄºËĞÄÔÚÓÚÖÆ×÷Ò»¸ö°üº¬¹Ì¼ş²îÒìĞÅÏ¢µÄ¡°²¹¶¡°ü¡±¡£Õû¸öÁ÷³Ì·ÖÎªÁ½²½£º
+
+### 2.1 Éú³ÉÔ­Ê¼PatchÎÄ¼ş
+
+ÕâÒ»²½ĞèÒªÔÚ×ÔĞĞÏÂÔØ¹¤¾ßÍê³É£¬ÓÃÓÚ¶Ô±ÈĞÂ¾É¹Ì¼ş£¬²¢Éú³É×îÔ­Ê¼µÄ²î·ÖÊı¾İ¡£
+
+1.  **ÏÂÔØ¹¤¾ß**:
+    ´ÓHPatchLiteµÄ¹Ù·½GitHub²Ö¿âÏÂÔØÆäÔ¤±àÒëµÄ¶ş½øÖÆ¹¤¾ß°ü£º
     [https://github.com/sisong/HPatchLite/releases](https://github.com/sisong/HPatchLite/releases)
-    è¯·ä¸‹è½½æœ€æ–°ç‰ˆæœ¬çš„ `HPatchLite_vX.X.X_bin_xxxx.zip` å¹¶è§£å‹ã€‚
+    ÇëÏÂÔØ×îĞÂ°æ±¾µÄ `HPatchLite_vX.X.X_bin_xxxx.zip` ²¢½âÑ¹¡£
 
-2.  **å‡†å¤‡æ–‡ä»¶**:
-    *   `old.bin`: æ‚¨è®¾å¤‡ä¸Šå½“å‰æ­£åœ¨è¿è¡Œçš„å›ºä»¶ç‰ˆæœ¬ã€‚
-    *   `new.bin`: æ‚¨å¸Œæœ›å‡çº§åˆ°çš„æ–°ç‰ˆæœ¬å›ºä»¶ã€‚
+2.  **×¼±¸ÎÄ¼ş**:
+    *   `old.bin`: ÄúÉè±¸ÉÏµ±Ç°ÕıÔÚÔËĞĞµÄ¹Ì¼ş°æ±¾¡£
+    *   `new.bin`: ÄúÏ£ÍûÉı¼¶µ½µÄĞÂ°æ±¾¹Ì¼ş¡£
 
-3.  **æ‰§è¡Œæ‰“åŒ…å‘½ä»¤**:
-    æ‰“å¼€å‘½ä»¤è¡Œå·¥å…·ï¼ˆå¦‚CMDæˆ–PowerShellï¼‰ï¼Œè¿›å…¥ `hdiffi.exe` æ‰€åœ¨çš„ç›®å½•ï¼Œæ‰§è¡Œä»¥ä¸‹å‘½ä»¤ï¼š
+3.  **Ö´ĞĞ´ò°üÃüÁî**:
+    ´ò¿ªÃüÁîĞĞ¹¤¾ß£¨ÈçCMD»òPowerShell£©£¬½øÈë `hdiffi.exe` ËùÔÚµÄÄ¿Â¼£¬Ö´ĞĞÒÔÏÂÃüÁî£º
 
     ```bash
     .\hdiffi.exe old.bin new.bin patch.bin
-    ```    *   `old.bin`: æ—§å›ºä»¶æ–‡ä»¶è·¯å¾„ã€‚
-    *   `new.bin`: æ–°å›ºä»¶æ–‡ä»¶è·¯å¾„ã€‚
-    *   `patch.bin`: å‘½ä»¤æˆåŠŸåç”Ÿæˆçš„åŸå§‹å·®åˆ†è¡¥ä¸æ–‡ä»¶ã€‚
+    ```    *   `old.bin`: ¾É¹Ì¼şÎÄ¼şÂ·¾¶¡£
+    *   `new.bin`: ĞÂ¹Ì¼şÎÄ¼şÂ·¾¶¡£
+    *   `patch.bin`: ÃüÁî³É¹¦ºóÉú³ÉµÄÔ­Ê¼²î·Ö²¹¶¡ÎÄ¼ş¡£
 
-4.  **ï¼ˆå¯é€‰ï¼‰éªŒè¯å·®åˆ†åŒ…**:
-    æ‚¨å¯ä»¥ä½¿ç”¨ `hpatchi.exe` å·¥å…·åœ¨PCä¸Šæ¨¡æ‹Ÿå·®åˆ†åˆå¹¶è¿‡ç¨‹ï¼Œä»¥éªŒè¯ `patch.bin` çš„æ­£ç¡®æ€§ã€‚
+4.  **£¨¿ÉÑ¡£©ÑéÖ¤²î·Ö°ü**:
+    Äú¿ÉÒÔÊ¹ÓÃ `hpatchi.exe` ¹¤¾ßÔÚPCÉÏÄ£Äâ²î·ÖºÏ²¢¹ı³Ì£¬ÒÔÑéÖ¤ `patch.bin` µÄÕıÈ·ĞÔ¡£
 
     ```bash
     .\hpatchi.exe old.bin patch.bin new_flash.bin
     ```
-    æ‰§è¡Œåï¼Œä½¿ç”¨æ–‡ä»¶æ¯”å¯¹å·¥å…·ç¡®è®¤ç”Ÿæˆçš„ `new_flash.bin` ä¸ `new.bin` å®Œå…¨ä¸€è‡´ã€‚
+    Ö´ĞĞºó£¬Ê¹ÓÃÎÄ¼ş±È¶Ô¹¤¾ßÈ·ÈÏÉú³ÉµÄ `new_flash.bin` Óë `new.bin` ÍêÈ«Ò»ÖÂ¡£
 
-### 2.2 å°†Patchæ–‡ä»¶æ‰“åŒ…ä¸ºQBootå¯è¯†åˆ«çš„RBLæ ¼å¼
+### 2.2 ½«PatchÎÄ¼ş´ò°üÎªQBoot¿ÉÊ¶±ğµÄRBL¸ñÊ½
 
-QBootéœ€è¦ä¸€ä¸ªå¸¦æœ‰æ ‡å‡†å¤´éƒ¨ä¿¡æ¯ï¼ˆ`.rbl`æ ¼å¼ï¼‰çš„å‡çº§åŒ…ã€‚æˆ‘ä»¬éœ€è¦ä½¿ç”¨é…å¥—çš„Pythonè„šæœ¬å°†ä¸Šä¸€æ­¥ç”Ÿæˆçš„ `patch.bin` è¿›è¡Œå°è£…ã€‚
+QBootĞèÒªÒ»¸ö´øÓĞ±ê×¼Í·²¿ĞÅÏ¢£¨`.rbl`¸ñÊ½£©µÄÉı¼¶°ü¡£ÎÒÃÇĞèÒªÊ¹ÓÃÅäÌ×µÄPython½Å±¾½«ÉÏÒ»²½Éú³ÉµÄ `patch.bin` ½øĞĞ·â×°¡£
 
-1.  **è·å–è„šæœ¬**:
-    è¯¥è„šæœ¬é€šå¸¸ä½äº `bl_lib/qboot/tools/package_tool.py`ã€‚
-    è„šæœ¬å‚è€ƒäº† [RT_ota_packager_python](https://github.com/sunkr1995/RT_ota_packager_python) çš„è®¾è®¡ã€‚
+1.  **»ñÈ¡½Å±¾**:
+    ¸Ã½Å±¾Í¨³£Î»ÓÚ `qboot/tools/package_tool.py`¡£
+    ½Å±¾²Î¿¼ÁË [RT_ota_packager_python](https://github.com/sunkr1995/RT_ota_packager_python) µÄÉè¼Æ¡£
 
-2.  **æ‰§è¡Œæ‰“åŒ…å‘½ä»¤**:
-    åœ¨PCä¸Šæ‰§è¡Œä»¥ä¸‹Pythonè„šæœ¬å‘½ä»¤ï¼š
+2.  **Ö´ĞĞ´ò°üÃüÁî**:
+    ÔÚPCÉÏÖ´ĞĞÒÔÏÂPython½Å±¾ÃüÁî£º
     ```bash
     python .\package_tool.py patch.bin new.bin
     ```
-    *   **ç¬¬ä¸€ä¸ªå‚æ•° (`patch.bin`)**: ä¸Šä¸€æ­¥ç”Ÿæˆçš„åŸå§‹å·®åˆ†è¡¥ä¸æ–‡ä»¶ã€‚å®ƒå°†ä½œä¸ºRBLåŒ…çš„æ•°æ®ä¸»ä½“ã€‚
-    *   **ç¬¬äºŒä¸ªå‚æ•° (`new.bin`)**: æ–°ç‰ˆæœ¬å›ºä»¶æ–‡ä»¶ã€‚**æ³¨æ„**ï¼šè¿™ä¸ªæ–‡ä»¶**ä»…ç”¨äº**è®¡ç®—RBLå¤´éƒ¨æ‰€éœ€çš„å…ƒæ•°æ®ï¼ˆå¦‚æ–°å›ºä»¶çš„æ€»å¤§å°`raw_size`å’ŒCRCæ ¡éªŒ`raw_crc`ï¼‰ï¼Œå®ƒ**ä¸ä¼š**è¢«åŒ…å«åœ¨æœ€ç»ˆçš„å‡çº§åŒ…é‡Œã€‚
+    *   **µÚÒ»¸ö²ÎÊı (`patch.bin`)**: ÉÏÒ»²½Éú³ÉµÄÔ­Ê¼²î·Ö²¹¶¡ÎÄ¼ş¡£Ëü½«×÷ÎªRBL°üµÄÊı¾İÖ÷Ìå¡£
+    *   **µÚ¶ş¸ö²ÎÊı (`new.bin`)**: ĞÂ°æ±¾¹Ì¼şÎÄ¼ş¡£**×¢Òâ**£ºÕâ¸öÎÄ¼ş**½öÓÃÓÚ**¼ÆËãRBLÍ·²¿ËùĞèµÄÔªÊı¾İ£¨ÈçĞÂ¹Ì¼şµÄ×Ü´óĞ¡`raw_size`ºÍCRCĞ£Ñé`raw_crc`£©£¬Ëü**²»»á**±»°üº¬ÔÚ×îÖÕµÄÉı¼¶°üÀï¡£
 
-    å‘½ä»¤æˆåŠŸåï¼Œä¼šåœ¨åŒç›®å½•ä¸‹ç”Ÿæˆä¸€ä¸ªåä¸º **`patch.rbl`** çš„æ–‡ä»¶ã€‚è¿™ä¸ªæ–‡ä»¶å°±æ˜¯æœ€ç»ˆå¯ä»¥è¢«QBootä¸‹è½½å¹¶ç”¨äºå·®åˆ†å‡çº§çš„å›ºä»¶åŒ…ã€‚
+    ÃüÁî³É¹¦ºó£¬»áÔÚÍ¬Ä¿Â¼ÏÂÉú³ÉÒ»¸öÃûÎª **`patch.rbl`** µÄÎÄ¼ş¡£Õâ¸öÎÄ¼ş¾ÍÊÇ×îÖÕ¿ÉÒÔ±»QBootÏÂÔØ²¢ÓÃÓÚ²î·ÖÉı¼¶µÄ¹Ì¼ş°ü¡£
 
-## 3. QBootç»„ä»¶é…ç½®
+---
 
-è¦å¯ç”¨ `HPatchLite` å·®åˆ†å‡çº§åŠŸèƒ½ï¼Œæ‚¨éœ€è¦åœ¨RT-Thread Studioæˆ–menuconfigä¸­è¿›è¡Œç›¸å…³é…ç½®ã€‚
+## 3. QBoot ×é¼şÅäÖÃ£¨Kconfig£©
 
-#### 3.1 å¯ç”¨HPatchLite
-é¦–å…ˆï¼Œåœ¨QBootçš„é…ç½®èœå•ä¸­ï¼Œå¿…é¡»å‹¾é€‰ `using hpatch-lite decompress` é€‰é¡¹ã€‚
+### 3.1 ÆôÓÃHPatchLite
+Ê×ÏÈ£¬ÔÚQBootµÄÅäÖÃ²Ëµ¥ÖĞ£¬±ØĞë¹´Ñ¡ `using hpatch-lite decompress` Ñ¡Ïî¡£
 ```Kconfig
-config QBOOT_USING_HPatchLITE
+config QBOOT_USING_HPATCHLITE
     bool "using hpatch-lite decompress"
     select PKG_USING_HPATCHLITE
     default n
 ```
 
-#### 3.2 é…ç½®å‡çº§ç­–ç•¥ (æ ¸å¿ƒ)
-å‹¾é€‰åï¼Œä¼šå‡ºç°ä¸€ä¸ªå…³é”®çš„äºŒé€‰ä¸€é…ç½®é¡¹ `HPatchLite In-Place Update Strategy`ï¼Œç”¨äºå†³å®šå·®åˆ†å‡çº§æ—¶ä½¿ç”¨çš„ç¼“å†²åŒºç±»å‹ã€‚**è¿™æ˜¯ä¸ºäº†è§£å†³åœ¨åŒä¸€å—Flashä¸Šè¿›è¡Œè¯»ï¼ˆæ—§å›ºä»¶ï¼‰å†™ï¼ˆæ–°å›ºä»¶ï¼‰å†²çªçš„æ ¸å¿ƒé—®é¢˜ã€‚**
 
-##### 3.2.1 ç­–ç•¥ä¸€ï¼šä½¿ç”¨Flashä½œä¸ºç¼“å†²åŒº (Flash Swap)
-è¿™æ˜¯åœ¨RAMèµ„æºæå…¶å®è´µæ—¶çš„æ¨èé€‰é¡¹ã€‚å®ƒä¼šä½¿ç”¨ä¸€å—ç‹¬ç«‹çš„Flashåˆ†åŒºä½œä¸ºä¸´æ—¶å‘¨è½¬ç©ºé—´ã€‚
+### 3.2 Ñ¡ÔñÔ­µØ¸üĞÂ²ßÂÔ£¨¶şÑ¡Ò»£©
 
-*   **é…ç½®é¡¹**:
-    ```Kconfig
-    config QBOOT_HPATCH_USE_FLASH_SWAP
-        bool "Use a FLASH partition as swap buffer"
-    ```
-*   **ä¼˜ç‚¹**: æå¤§åœ°èŠ‚çœäº†å®è´µçš„RAMèµ„æºã€‚
-*   **ç¼ºç‚¹**: é€Ÿåº¦ç›¸å¯¹è¾ƒæ…¢ï¼Œå› ä¸ºæ¶‰åŠå¤šæ¬¡Flashè¯»å†™æ“ä½œï¼›å¯¹Flashçš„ç£¨æŸä¹Ÿæ›´å¤§ã€‚
-*   **å…³è”é…ç½®**:
-    *   **`Swap partition name for HPatchLite`**:
-        å¿…é¡»æŒ‡å®šä¸€ä¸ªåœ¨FALä¸­å®šä¹‰å¥½çš„ã€ç”¨ä½œäº¤æ¢ç©ºé—´çš„åˆ†åŒºåç§°ã€‚
-        ```Kconfig
-        config QBOOT_HPATCH_SWAP_PART_NAME
-            string "Swap partition name for HPatchLite"
-            default "swap"
-        ```
-    *   **`Offset within the swap partition to use as a buffer`**:
-        æŒ‡å®šåœ¨`swap`åˆ†åŒºå†…çš„èµ·å§‹åç§»é‡ã€‚è¿™å…è®¸æ‚¨åªä½¿ç”¨`swap`åˆ†åŒºçš„ä¸€éƒ¨åˆ†ä½œä¸ºç¼“å†²åŒºã€‚
-        ```Kconfig
-        config QBOOT_HPATCH_SWAP_OFFSET
-            int "Offset within the swap partition to use as a buffer"
-            default 0
-        ```
-    *   **`RAM buffer size for flash-to-flash copy operations`**:
-        é…ç½®åœ¨Flashåˆ†åŒºä¹‹é—´æ‹·è´æ•°æ®æ—¶ä½¿ç”¨çš„**ä¸´æ—¶RAMç¼“å†²åŒº**å¤§å°ã€‚è¿™ä¸ªå€¼è¶Šå¤§ï¼Œæ‹·è´é€Ÿåº¦è¶Šå¿«ï¼Œä½†æ¶ˆè€—çš„RAMä¹Ÿè¶Šå¤šã€‚
-        ```Kconfig
-        config QBOOT_HPATCH_COPY_BUFFER_SIZE
-            int "RAM buffer size for flash-to-flash copy operations"
-            default 4096
-        ```
+```Kconfig
+choice
+    prompt "HPatchLite In-Place Update Strategy"
+    default QBOOT_HPATCH_USE_STORAGE_SWAP
 
-##### 3.2.2 ç­–ç•¥äºŒï¼šä½¿ç”¨RAMä½œä¸ºç¼“å†²åŒº (RAM Buffer)
-è¿™æ˜¯åœ¨RAMèµ„æºç›¸å¯¹å……è¶³æ—¶çš„æ¨èé€‰é¡¹ã€‚å®ƒç›´æ¥åœ¨å†…å­˜ä¸­å®Œæˆæ•°æ®å‘¨è½¬ï¼Œé€Ÿåº¦æ›´å¿«ã€‚
+    config QBOOT_HPATCH_USE_STORAGE_SWAP
+        bool "Use a storage medium as swap buffer"
 
-*   **é…ç½®é¡¹**:
-    ```Kconfig
     config QBOOT_HPATCH_USE_RAM_BUFFER
         bool "Use a RAM buffer (Faster, consumes RAM)"
-    ```
-*   **ä¼˜ç‚¹**: é€Ÿåº¦å¿«ï¼Œå¯¹Flashçš„ç£¨æŸå°ã€‚
-*   **ç¼ºç‚¹**: æ¶ˆè€—çš„RAMè¾ƒå¤šï¼Œéœ€è¦ä»”ç»†è¯„ä¼°ã€‚
-*   **å…³è”é…ç½®**:
-    *   **`RAM buffer size for HPatchLite`**:
-        é…ç½®ç”¨äºå·®åˆ†å‡çº§çš„RAMç¼“å†²åŒºå¤§å°ã€‚**æ³¨æ„**ï¼šä¸ºäº†ä¿è¯åŸåœ°å‡çº§é€»è¾‘çš„æ­£ç¡®æ€§ï¼Œè¿™ä¸ªå€¼**å¿…é¡»å¤§äºç­‰äº**æ‚¨`app`åˆ†åŒºæ‰€åœ¨Flashçš„**æœ€å°æ“¦é™¤å•å…ƒï¼ˆSector Sizeï¼‰**ã€‚
-        ```Kconfig
-        config QBOOT_HPATCH_RAM_BUFFER_SIZE
-            int "RAM buffer size for HPatchLite (must be >= sector size)"
-            default 4096
-        ```
+endchoice
+```
 
-## 4. FALåˆ†åŒºä¸é…ç½®ç¤ºä¾‹
+Á½ÖÖ²ßÂÔµÄ¹²Í¬µã£º
 
-æ­£ç¡®çš„FALåˆ†åŒºè§„åˆ’æ˜¯å·®åˆ†å‡çº§æˆåŠŸçš„å‰æã€‚ä»¥ä¸‹æ˜¯ä¸€ä¸ªå…¸å‹çš„é…ç½®ç¤ºä¾‹ã€‚
+* Í³Ò»Ê¹ÓÃ `qbt_swap_t` ¹ÜÀí swap ĞĞÎª£º`init/deinit/append/copy_to_old/reset`
+* `ram_buf` ÔÚ½øÈë patch Á÷³ÌÇ°Í³Ò» `rt_malloc()` ·ÖÅä£¨ÓÉ `qbt_swap_alloc_buf()` Íê³É£©
+* `_do_write_new()` Ö»¸ºÔğ¡°Ğ´Èë swap¡±£¬swap ÂúÔò´¥·¢ `qbt_swap_commit()`
 
-### 4.1 `fal_cfg.h` åˆ†åŒºè¡¨ç¤ºä¾‹
+---
 
-å‡è®¾æ‚¨çš„STM32èŠ¯ç‰‡Flashçš„æ“¦é™¤ç²’åº¦ä¸º128KBï¼Œæ‚¨è§„åˆ’äº†`app`, `factory`, `swap`, `download` å››ä¸ªåˆ†åŒºã€‚
+## 4. ²ßÂÔÒ»£ºFLASH SWAP£¨Ê¹ÓÃ´æ´¢½éÖÊ×ö swap£©
+
+### 4.1 ÊÊÓÃ³¡¾°
+
+* RAM ×ÊÔ´½ôÕÅ
+* ÔÊĞíÎşÉüÒ»¶¨ËÙ¶È»»È¡¸üµÍ RAM Õ¼ÓÃ
+
+### 4.2 ÅäÖÃÏî
+
+#### 4.2.1 Ñ¡Ôñ swap ºó¶Ë£¨FAL / ×Ô¶¨Òå / ÎÄ¼şÏµÍ³£©
+
+```Kconfig
+if QBOOT_HPATCH_USE_STORAGE_SWAP
+    choice
+        prompt "HPatchLite swap backend"
+        default QBOOT_HPATCH_SWAP_STORE_FAL
+
+        config QBOOT_HPATCH_SWAP_STORE_FAL
+            bool "FAL partition"
+
+        config QBOOT_HPATCH_SWAP_STORE_CUSTOM
+            bool "Custom flash region"
+
+        config QBOOT_HPATCH_SWAP_STORE_FS
+            bool "Filesystem file"
+    endchoice
+endif
+```
+
+#### 4.2.2 swap ÇøÓòÓëÆ«ÒÆ
+
+* FAL ·ÖÇøºó¶Ë£º
+
+```Kconfig
+config QBOOT_HPATCH_SWAP_PART_NAME
+    string "Swap partition name for HPatchLite"
+    default "swap"
+```
+
+* ÎÄ¼şÏµÍ³ºó¶Ë£º
+
+```Kconfig
+config QBOOT_HPATCH_SWAP_FILE_PATH
+    string "Swap file path for HPatchLite"
+    default "/hpatch.swap"
+
+config QBOOT_HPATCH_SWAP_FILE_SIZE
+    int "Swap file size for HPatchLite"
+    default 524288
+```
+
+²¢ÇÒÊµÏÖÖĞ»á¼ì²é£º
+
+* `QBOOT_HPATCH_SWAP_FILE_SIZE` ±ØĞë **>= Ä¿±ê·ÖÇø²Á³ı¶ÔÆë´óĞ¡**£¨¼´ `old_part_sector_size`£©
+
+* swap ÆğÊ¼Æ«ÒÆ£º
+
+```Kconfig
+config QBOOT_HPATCH_SWAP_OFFSET
+    int "Offset within the swap region to use as a buffer"
+    default 0
+```
+
+#### 4.2.3 flash-to-flash ¿½±´ÁÙÊ± RAM »º³å
+
+```Kconfig
+config QBOOT_HPATCH_COPY_BUFFER_SIZE
+    int "RAM buffer size for flash-to-flash copy operations"
+    default 4096
+```
+
+ÊµÏÖº¬Òå£º
+
+* FLASH SWAP Ä£Ê½ÏÂ£¬patch ²úÉúµÄĞÂÊı¾İÏÈĞ´Èë swap£¨·ÖÇø/ÎÄ¼ş£©
+* Ìá½»£¨commit£©Ê±£¬´Ó swap ¶Á³ö£¬ÔÙĞ´Èë old ·ÖÇø
+* ¶ÁĞ´°áÔËÊ¹ÓÃ `ram_buf` ×÷ÎªÁÙÊ±¿½±´»º´æ£¨´óĞ¡ÓÉ `QBOOT_HPATCH_COPY_BUFFER_SIZE` ¾ö¶¨£©
+
+### 4.3 ¹Ø¼üÊµÏÖµã
+
+* `qbt_flash_swap_init()`£º
+
+  * ´ò¿ª swap Ä¿±ê£¨·ÖÇø/ÎÄ¼ş/×Ô¶¨ÒåÇøÓò£©
+  * °´ `QBOOT_HPATCH_SWAP_OFFSET` Óë¿ÉÓÃÈİÁ¿¼ÆËã `capacity`
+  * ÏÈ²Á³ı swap ÇøÓò£¬`write_pos=0`
+* `qbt_flash_swap_append()`£º°ÑĞÂÊı¾İĞ´Èë swap ´æ´¢½éÖÊ
+* `qbt_flash_copy_to_old()`£º°´ `ram_buf_size` ·Ö¿é´Ó swap ¶Á³ö²¢Ğ´Èë old ·ÖÇø
+* `qbt_flash_swap_reset()`£ºÃ¿´Î commit ºó²Á³ı swap ÇøÓò£¬ÎªÏÂÒ»ÂÖĞ´Èë×ö×¼±¸
+
+---
+
+## 5. ²ßÂÔ¶ş£ºRAM BUFFER£¨Ê¹ÓÃ RAM ×ö swap£©
+
+### 5.1 ÊÊÓÃ³¡¾°
+
+* RAM ×ÊÔ´³ä×ã
+* Ï£Íû¸ü¿ìËÙ¶È¡¢¸üÉÙ flash ²ÁĞ´´ÎÊı
+
+### 5.2 ÅäÖÃÏî
+
+```Kconfig
+config QBOOT_HPATCH_RAM_BUFFER_SIZE
+    int "RAM buffer size for HPatchLite (must be >= sector size)"
+    default 4096
+```
+
+½¨Òé£º
+
+* `QBOOT_HPATCH_RAM_BUFFER_SIZE` **>= app/old ·ÖÇøµÄ×îĞ¡²Á³ıµ¥Ôª**£¨sector size / erase align£©
+* »º³åÔ½´ó£¬commit ´ÎÊıÔ½ÉÙ£¬ÕûÌåËÙ¶È¿ÉÄÜ¸üºÃ£¬µ« RAM Õ¼ÓÃ¸ü¸ß
+
+### 5.3 ¹Ø¼üÊµÏÖµã
+
+* `qbt_ram_swap_append()`£º°ÑĞÂÊı¾İ `memcpy` µ½ `ram_buf`
+* `qbt_ram_copy_to_old()`£ºcommit Ê±Ö±½Ó°Ñ `ram_buf` Ğ´Èë old ·ÖÇø
+* `qbt_ram_swap_reset()`£ºcommit ºó½ö `write_pos=0`£¬ÎŞĞè²Á³ı swap ÇøÓò
+
+---
+
+## 6. ´æ´¢ºó¶ËÓë²Á³ı¶ÔÆë
+
+HPatchLite ²î·ÖÁ÷³ÌÍ¨¹ı `qboot_io_ops_t` ²Ù×÷´æ´¢ºó¶Ë£¬ºó¶ËĞèÒªÊµÏÖ£º
+
+* `open/close/read/erase/write/size`
+* ÍÆ¼öÊµÏÖ `ioctl` À©Õ¹µã£º
+
+### 6.1 ²Á³ı¶ÔÆë²éÑ¯£º`QBOOT_IO_CMD_GET_ERASE_ALIGN`
+
+²î·ÖÔ­µØ¸üĞÂÖĞ±ØĞë¿¼ÂÇ²Á³ı¶ÔÆë£º
+
+* commit Ğ´Èë old ·ÖÇøÇ°£¬Ê¹ÓÃ `qbt_erase_aligned_range()` °´¶ÔÆëÔöÁ¿²Á³ı
+* ¸üĞÂÍê³Éºó£¬¶ÔĞÂ¹Ì¼şÎ²²¿Ö´ĞĞ¶ÔÆë²Á³ı
+
+Òò´Ëºó¶Ë½¨ÒéÊµÏÖ£º
+
+* `ioctl(old_part, QBOOT_IO_CMD_GET_ERASE_ALIGN, &erase_align)`
+
+µ±Ç°ÊµÏÖÖĞÈç¹û»ñÈ¡Ê§°Ü»áÖ±½Ó±¨´íÍË³ö£¨½¨ÒéÔÚºó¶Ë²¹Æë¸Ã ioctl ÒÔ±£Ö¤¼æÈİĞÔ£©¡£
+
+---
+
+## 7. FAL ·ÖÇøÓëÅäÖÃÊ¾Àı£¨ÒÔ FLASH SWAP ÎªÀı£©
+
+### 7.1 fal_cfg.h ·ÖÇø¹æ»®Ê¾Àı
+
+Ê¾Àı£¨¼ÙÉè²Á³ıÁ£¶È 128KB£¬·ÖÇø¹æ»® app/factory/swap/download£©£º
 
 ```c
-/* light_boot/UserSrc/fal_cfg.h */
-
-/* 
- * Flash ç‰©ç†åœ°å€è§„åˆ’ (ç¤ºä¾‹):
- * bl       0x08000000 (128KB, ç”±IDEç®¡ç†, ä¸åœ¨FALä¸­)
- * app      0x08020000 (384KB)
- * factory  0x08080000 (256KB)
- * swap     0x080A0000 (128KB)
- * download 0x080C0000 (128KB)
-*/
 #define FAL_PART_TABLE                                                                                  \
 {                                                                                                       \
     {FAL_PART_MAGIC_WORD,   "app",          "onchip_flash_128k",                 0, 3 * 128 * 1024, 0}, \
@@ -155,13 +266,14 @@ config QBOOT_USING_HPatchLITE
     {FAL_PART_MAGIC_WORD,   "download",     "onchip_flash_128k",    6 * 128 * 1024, 1 * 128 * 1024, 0}, \
 }
 ```
-*   **`app`**: å­˜æ”¾åº”ç”¨ç¨‹åºå›ºä»¶çš„åˆ†åŒºï¼Œä¹Ÿæ˜¯å·®åˆ†å‡çº§çš„ç›®æ ‡åˆ†åŒºã€‚
-*   **`swap`**: **å¿…é¡»å­˜åœ¨**ï¼ˆå¦‚æœä½¿ç”¨Flash Swapç­–ç•¥ï¼‰ã€‚å®ƒçš„å¤§å°è‡³å°‘è¦ç­‰äº `app` åˆ†åŒºFlashçš„æ“¦é™¤ç²’åº¦ï¼ˆæœ¬ä¾‹ä¸­ä¸º128KBï¼‰ï¼Œç”¨äºåœ¨å‡çº§æ—¶åšæ•°æ®å‘¨è½¬ã€‚
-*   **`download`**: ç”¨äºå­˜æ”¾ä¸‹è½½çš„ `patch.rbl` å‡çº§åŒ…ã€‚
 
-### 4.2 `rtconfig.h` Kconfigå®å®šä¹‰ç¤ºä¾‹
+Òªµã£º
 
-ä»¥ä¸‹æ˜¯ä¸ä¸Šè¿°FALåˆ†åŒºå’Œé€‰æ‹©Flash Swapç­–ç•¥å¯¹åº”çš„ `rtconfig.h` å®å®šä¹‰ã€‚
+* `app`£º²î·ÖÉı¼¶Ä¿±ê·ÖÇø£¨old/new ¶¼ÔÚÕâÀï£©
+* `swap`£ºFLASH SWAP ²ßÂÔ±ØĞë´æÔÚ£¬ÇÒ½¨Òé **>= app µÄ²Á³ıÁ£¶È**
+* `download`£º´æ·Å `patch.rbl`
+
+### 7.2 rtconfig.hÊ¾Àı
 
 ```c
 #define PKG_USING_QBOOT
@@ -172,12 +284,64 @@ config QBOOT_USING_HPatchLITE
 #define QBOOT_FACTORY_PART_NAME "factory"
 #define QBOOT_USING_QUICKLZ
 
-/* --- HPatchLite å…³é”®é…ç½® --- */
+/* --- HPatchLite ¹Ø¼üÅäÖÃ --- */
 #define QBOOT_USING_HPATCHLITE
-#define QBOOT_HPATCH_USE_FLASH_SWAP
+
+/* --- HPatchLite ²ßÂÔ£ºFLASH SWAP --- */
+#define QBOOT_HPATCH_USE_STORAGE_SWAP
 #define QBOOT_HPATCH_SWAP_PART_NAME "swap"
 #define QBOOT_HPATCH_SWAP_OFFSET 0
 #define QBOOT_HPATCH_COPY_BUFFER_SIZE 4096
+
+/* Patch/Decompress cache£¨Óë Kconfig Ò»ÖÂ£© */
+#define QBOOT_HPATCH_PATCH_CACHE_SIZE 4096
+#define QBOOT_HPATCH_DECOMPRESS_CACHE_SIZE 4096
 ```
 
-å®Œæˆä»¥ä¸Šé…ç½®åï¼Œæ‚¨çš„QBootå°±å…·å¤‡äº†ç¨³å®šã€é«˜æ•ˆçš„å·®åˆ†å‡çº§èƒ½åŠ›ã€‚
+---
+
+## 8. ²î·ÖÉı¼¶Ö´ĞĞÁ÷³Ì£¨ÊµÏÖĞĞÎª¶ÔÕÕ£©
+
+ÒÔÏÂÃèÊö¶ÔÓ¦µ±Ç°ÊµÏÖµÄ¹Ø¼üº¯ÊıÓë×´Ì¬×Ö¶Î£º
+
+1. **³õÊ¼»¯ÊµÀı**
+
+   * `qbt_hpatchlite_release_from_part()`
+   * Ìî³ä `hpatchi_instance_t`£º`patch_part/old_part/newer_file_len/patch_file_len` µÈ
+   * Í¨¹ı `ioctl(QBOOT_IO_CMD_GET_ERASE_ALIGN)` »ñÈ¡ `old_part_sector_size`
+   * ·ÖÅä `swap->ram_buf`£º`qbt_swap_alloc_buf()`
+   * ³õÊ¼»¯ swap ºó¶Ë£º`swap->init()`
+
+2. **½øÈë HPatchLite ºÏ³É**
+
+   * µ÷ÓÃ `hpi_patch(&instance.parent, ..., _do_read_patch, _do_read_old, _do_write_new)`
+   * `_do_read_patch()`£º°´Á÷Ê½ offset ¶ÁÈ¡ patch Êı¾İ
+   * `_do_read_old()`£ºÖ±½Ó´Ó old ·ÖÇø¶ÁÈ¡¾ÉÊı¾İ
+   * `_do_write_new()`£º°ÑĞÂÊı¾İĞ´Èë swap£»µ± `write_pos >= capacity` Ê±´¥·¢ `qbt_swap_commit()`
+
+3. **Ìá½»Âß¼­£¨Í³Ò»£©**
+
+   * `qbt_swap_commit()`
+
+     * ¼ÆËã±¾ÂÖ `used = write_pos`
+     * `qbt_erase_aligned_range()`£º¶Ô `[committed_len, committed_len+used)` ×ö¶ÔÆë²Á³ı£¨ÔöÁ¿£©
+     * `swap->copy_to_old()`£º°Ñ swap Êı¾İĞ´Èë old ·ÖÇø
+     * ¸üĞÂ `committed_len += used`
+     * `swap->reset()` ÇåÀí±¾ÂÖ×´Ì¬
+
+4. **½áÊøÊÕÎ²**
+
+   * Èô patch ³É¹¦ÇÒ swap ÈÔÓĞ²ĞÁô£ºÔÙ commit Ò»´Î
+   * ÈôĞÂ¹Ì¼şĞ¡ÓÚ·ÖÇø£º¶ÔÎ²²¿ `[newer_file_len, part_len)` ×ö¶ÔÆë²Á³ı£¨`align_start_up = RT_TRUE`£©
+   * ×îÖÕ¼ì²é£º`committed_len == newer_file_len` ÅĞ¶¨³É¹¦
+
+---
+
+## 9. ³£¼û×¢ÒâÊÂÏî
+
+* **²Á³ı¶ÔÆë±ØĞëÕıÈ·**£ººó¶Ë½¨ÒéÊµÏÖ `QBOOT_IO_CMD_GET_ERASE_ALIGN`£¬·ñÔò»áµ¼ÖÂ²Á³ı·¶Î§²»ÕıÈ·»òÁ÷³ÌÖ±½ÓÊ§°Ü¡£
+* **RAM BUFFER ´óĞ¡½¨Òé >= ²Á³ıµ¥Ôª**£º±ÜÃâ¿ç²Á³ı¿éĞ´Èë´øÀ´µÄÔ­µØ¸üĞÂ·çÏÕ¡£
+* **FLASH SWAP ÈİÁ¿¹æ»®**£ºswap ÇøÓò¿ÉÓÃÈİÁ¿ÓÉ `swap_part_size - QBOOT_HPATCH_SWAP_OFFSET` ¾ö¶¨£¬ĞèÂú×ã²î·Ö¹ı³ÌÖÜ×ªĞèÇó£¨ÖÁÉÙ¸²¸ÇËã·¨ĞèÒªµÄĞ´»º³åÌá½»Á£¶È£©¡£
+* **ÎÄ¼şÏµÍ³ swap**£ºĞèÒª±£Ö¤ `QBOOT_HPATCH_SWAP_FILE_SIZE >= erase_align`£¬·ñÔò»áÖ±½Ó¾Ü¾øÖ´ĞĞ¡£
+
+---
